@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #161b22;
+  --foreground: #f0f6fc;
+  --primary: #ff7700;
+  --accent: #00ccff;
+  --card: #1c2128;
+  --input: #21262d;
+  --border: #30363d;
+  --secondary: #30363d;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+@layer components {
+  .bg-glass {
+    @apply bg-opacity-70 backdrop-blur-md border border-tech-border;
+    background-color: rgba(28, 33, 40, 0.7);
+  }
+
+  .bg-gradient {
+    background: linear-gradient(135deg, #ff7700 0%, #ff4d00 100%);
+  }
+
+  .bg-gradient-accent {
+    background: linear-gradient(135deg, #00ccff 0%, #0088ff 100%);
+  }
+
+  .tech-border {
+    @apply relative rounded-md overflow-hidden;
+  }
+
+  .bg-grid {
+    background-image: 
+      linear-gradient(to right, rgba(48, 54, 61, 0.1) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(48, 54, 61, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: var(--input);
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: var(--secondary);
+    border-radius: 10px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+  }
+}
