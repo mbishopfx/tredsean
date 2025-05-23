@@ -18,25 +18,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${jetbrains.variable}`}>
-      <head>
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            // Simple script to ensure localStorage functionality
-            try {
-              window.localStorage;
-            } catch (e) {
-              // Add a fake localStorage for environments that have it disabled
-              window.localStorage = {
-                _data: {},
-                setItem: function(id, val) { this._data[id] = String(val); },
-                getItem: function(id) { return this._data.hasOwnProperty(id) ? this._data[id] : null; },
-                removeItem: function(id) { delete this._data[id]; },
-                clear: function() { this._data = {}; }
-              };
-            }
-          `
-        }} />
-      </head>
       <body className="font-sans antialiased">
         <Providers>
           <div className="min-h-screen bg-tech-background">

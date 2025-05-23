@@ -2,8 +2,19 @@
 
 import { useState, useRef, ChangeEvent, useEffect } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 
 import { useActivityLogger } from './hooks/useActivityLogger';
+
+// Create a loading component
+const LoadingScreen = () => (
+  <div className="flex h-screen items-center justify-center bg-tech-background">
+    <div className="text-center">
+      <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+      <h2 className="text-xl font-semibold text-tech-foreground">Loading...</h2>
+    </div>
+  </div>
+);
 
 // Icons for the sidebar
 const MessageIcon = () => (
@@ -55,7 +66,7 @@ const DripCampaignIcon = () => (
 );
 
 // Dashboard component
-export default function Dashboard() {
+function DashboardContent() {
   const { logActivity } = useActivityLogger();
   
   // Authentication state
@@ -409,24 +420,14 @@ export default function Dashboard() {
   // Show loading state or prevent hydration mismatch
   if (!isAuthenticated || loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-tech-background">
-        <div className="text-center">
-          <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-tech-foreground">Loading...</h2>
-        </div>
-      </div>
+      <LoadingScreen />
     );
   }
 
   // Prevent hydration mismatch - don't render main content until client-side
   if (!isAuthenticated) {
     return (
-      <div className="flex h-screen items-center justify-center bg-tech-background">
-        <div className="text-center">
-          <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-tech-foreground">Initializing...</h2>
-        </div>
-      </div>
+      <LoadingScreen />
     );
   }
 
@@ -1260,7 +1261,7 @@ export default function Dashboard() {
       fetchDripCampaigns();
     }
   }, [activeTab, campaignFilter, campaignSearch]);
-
+  
   return (
     <div className="flex h-screen bg-tech-background text-tech-foreground">
       {/* Notification sound element */}
@@ -3158,3 +3159,11 @@ export default function Dashboard() {
     </div>
   );
 }
+
+// Dynamically import the dashboard with SSR disabled to prevent hydration issues
+const Dashboard = dynamic(() => Promise.resolve(DashboardContent), {
+  ssr: false,
+  loading: () => <LoadingScreen />
+});
+
+export default Dashboard;
