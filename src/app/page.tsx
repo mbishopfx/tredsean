@@ -126,7 +126,7 @@ function DashboardContent() {
   const [statsData, setStatsData] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
-  const [statsPeriod, setStatsPeriod] = useState<'24h' | '7d' | '30d' | 'all'>('7d');
+  const [statsPeriod, setStatsPeriod] = useState<'1h' | '6h' | '24h' | '7d' | '30d' | 'all'>('7d');
   
   // AI Rebuttal Generator state
   const [rebuttalInput, setRebuttalInput] = useState('');
@@ -2276,7 +2276,7 @@ function DashboardContent() {
               
               {/* Period selector */}
               <div className="ml-auto flex bg-tech-secondary bg-opacity-50 rounded-md p-1">
-                {['24h', '7d', '30d', 'all'].map((period) => (
+                {['1h', '6h', '24h', '7d', '30d', 'all'].map((period) => (
                   <button
                     key={period}
                     className={`px-3 py-1 text-sm rounded-md transition-colors duration-200 ${
@@ -2286,12 +2286,27 @@ function DashboardContent() {
                     }`}
                     onClick={() => setStatsPeriod(period as any)}
                   >
-                    {period === '24h' ? 'Last 24h' : 
+                    {period === '1h' ? 'Last Hour' :
+                     period === '6h' ? 'Last 6 Hours' :
+                     period === '24h' ? 'Last 24h' : 
                      period === '7d' ? 'Last 7 Days' : 
                      period === '30d' ? 'Last 30 Days' : 
                      'All Time'}
                   </button>
                 ))}
+                
+                {/* Auto-refresh toggle */}
+                <div className="ml-2 flex items-center">
+                  <button
+                    onClick={() => {
+                      setStatsPeriod(statsPeriod as any); // Trigger refresh
+                    }}
+                    className="px-2 py-1 text-xs bg-primary bg-opacity-20 text-primary rounded hover:bg-opacity-30 transition-colors"
+                    title="Refresh Now"
+                  >
+                    🔄
+                  </button>
+                </div>
               </div>
             </div>
             
@@ -2309,15 +2324,16 @@ function DashboardContent() {
               </div>
             ) : statsData ? (
               <div className="space-y-6">
-                {/* Overview Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Enhanced Overview Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                   <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
                     <div className="h-1 bg-gradient"></div>
                     <div className="p-4">
                       <div className="text-sm text-gray-400 mb-1">Total Messages</div>
                       <div className="text-3xl font-bold text-primary">{statsData.overview.totalMessages}</div>
-                      <div className="mt-2 text-xs text-gray-500">
-                        {statsData.timeRange.start} to {statsData.timeRange.end}
+                      <div className="mt-2 text-xs text-gray-500 flex justify-between">
+                        <span>Out: {statsData.overview.outbound}</span>
+                        <span>In: {statsData.overview.inbound}</span>
                       </div>
                     </div>
                   </div>
@@ -2328,8 +2344,8 @@ function DashboardContent() {
                       <div className="text-sm text-gray-400 mb-1">Delivery Rate</div>
                       <div className="text-3xl font-bold text-primary">{statsData.overview.deliveryRate}%</div>
                       <div className="mt-2 text-xs flex justify-between text-gray-500">
-                        <span>Delivered: {statsData.overview.deliveredCount}</span>
-                        <span>Failed: {statsData.overview.totalMessages - statsData.overview.deliveredCount}</span>
+                        <span>✅ {statsData.overview.deliveredCount}</span>
+                        <span>❌ {statsData.overview.failedCount}</span>
                       </div>
                     </div>
                   </div>
@@ -2337,14 +2353,10 @@ function DashboardContent() {
                   <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
                     <div className="h-1 bg-gradient-accent"></div>
                     <div className="p-4">
-                      <div className="text-sm text-gray-400 mb-1">Direction</div>
-                      <div className="flex items-end">
-                        <div className="text-3xl font-bold text-accent mr-2">{statsData.overview.outbound}</div>
-                        <div className="text-sm text-gray-400">outbound</div>
-                      </div>
-                      <div className="flex items-end mt-1">
-                        <div className="text-lg font-bold text-gray-300 mr-2">{statsData.overview.inbound}</div>
-                        <div className="text-xs text-gray-400">inbound</div>
+                      <div className="text-sm text-gray-400 mb-1">Reply Rate</div>
+                      <div className="text-3xl font-bold text-accent">{statsData.overview.replyRate}%</div>
+                      <div className="mt-2 text-xs text-gray-500">
+                        📞 Active Chats: {statsData.overview.activeConversations}
                       </div>
                     </div>
                   </div>
@@ -2355,11 +2367,100 @@ function DashboardContent() {
                       <div className="text-sm text-gray-400 mb-1">Total Cost</div>
                       <div className="text-3xl font-bold text-accent">${statsData.overview.totalCost}</div>
                       <div className="mt-2 text-xs text-gray-500">
-                        {statsData.overview.currency}
+                        {statsData.overview.currency} • ⏳ {statsData.overview.pendingCount} pending
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+                    <div className="h-1 bg-gradient-accent"></div>
+                    <div className="p-4">
+                      <div className="text-sm text-gray-400 mb-1">Last Updated</div>
+                      <div className="text-lg font-bold text-accent">
+                        {new Date(statsData.timeRange.lastUpdated).toLocaleTimeString()}
+                      </div>
+                      <div className="mt-2 text-xs text-gray-500">
+                        {new Date(statsData.timeRange.lastUpdated).toLocaleDateString()}
                       </div>
                     </div>
                   </div>
                 </div>
+                
+                {/* Hourly Activity Chart for short periods */}
+                {['1h', '6h', '24h'].includes(statsPeriod) && statsData.hourlyBreakdown && Object.keys(statsData.hourlyBreakdown).length > 0 && (
+                  <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+                    <div className="p-6">
+                      <h3 className="text-lg font-medium mb-4">Hourly Activity</h3>
+                      <div className="grid grid-cols-12 gap-2">
+                        {Array.from({length: 24}, (_, i) => {
+                          const hour = i.toString().padStart(2, '0') + ':00';
+                          const count = statsData.hourlyBreakdown[hour] || 0;
+                          const maxCount = Math.max(...Object.values(statsData.hourlyBreakdown).map(v => Number(v)));
+                          const height = maxCount > 0 ? (count / maxCount) * 100 : 0;
+                          
+                          return (
+                            <div key={hour} className="flex flex-col items-center">
+                              <div className="text-xs text-gray-400 mb-1">{hour.slice(0, 2)}</div>
+                              <div className="w-4 bg-tech-secondary relative" style={{height: '60px'}}>
+                                <div 
+                                  className="w-full bg-primary absolute bottom-0 transition-all duration-300"
+                                  style={{height: `${height}%`}}
+                                  title={`${hour}: ${count} messages`}
+                                ></div>
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">{count}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Campaign Analysis */}
+                {statsData.campaignAnalysis && statsData.campaignAnalysis.length > 0 && (
+                  <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+                    <div className="p-6">
+                      <h3 className="text-lg font-medium mb-4">Detected Campaigns</h3>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full">
+                          <thead>
+                            <tr className="bg-tech-secondary bg-opacity-30">
+                              <th className="px-4 py-2 text-left text-xs text-gray-400">Contact</th>
+                              <th className="px-4 py-2 text-left text-xs text-gray-400">Messages</th>
+                              <th className="px-4 py-2 text-left text-xs text-gray-400">Delivery Rate</th>
+                              <th className="px-4 py-2 text-left text-xs text-gray-400">Reply Rate</th>
+                              <th className="px-4 py-2 text-left text-xs text-gray-400">Last Activity</th>
+                              <th className="px-4 py-2 text-left text-xs text-gray-400">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {statsData.campaignAnalysis.map((campaign: any, index: number) => (
+                              <tr key={index} className="border-b border-tech-border">
+                                <td className="px-4 py-3 text-sm">{campaign.phoneNumber}</td>
+                                <td className="px-4 py-3 text-sm">{campaign.messagesInCampaign}</td>
+                                <td className="px-4 py-3 text-sm text-status-success">{campaign.deliveryRate.toFixed(1)}%</td>
+                                <td className="px-4 py-3 text-sm text-accent">{campaign.replyRate.toFixed(1)}%</td>
+                                <td className="px-4 py-3 text-sm">
+                                  {campaign.lastActivity ? new Date(campaign.lastActivity).toLocaleString() : 'N/A'}
+                                </td>
+                                <td className="px-4 py-3 text-sm">
+                                  <span className={`px-2 py-1 rounded-full text-xs ${
+                                    campaign.status === 'active' 
+                                      ? 'bg-status-success bg-opacity-20 text-status-success' 
+                                      : 'bg-tech-secondary text-gray-400'
+                                  }`}>
+                                    {campaign.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Status Breakdown */}
                 <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
@@ -2460,6 +2561,68 @@ function DashboardContent() {
                               </td>
                               <td className="px-4 py-3 text-sm">{new Date(message.dateSent).toLocaleString()}</td>
                               <td className="px-4 py-3 text-sm">{message.price}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Enhanced Phone Statistics */}
+                <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+                  <div className="p-6">
+                    <h3 className="text-lg font-medium mb-4">Contact Analytics</h3>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full">
+                        <thead>
+                          <tr className="bg-tech-secondary bg-opacity-30">
+                            <th className="px-4 py-2 text-left text-xs text-gray-400">Phone Number</th>
+                            <th className="px-4 py-2 text-left text-xs text-gray-400">Total</th>
+                            <th className="px-4 py-2 text-left text-xs text-gray-400">Out/In</th>
+                            <th className="px-4 py-2 text-left text-xs text-gray-400">Delivered</th>
+                            <th className="px-4 py-2 text-left text-xs text-gray-400">Failed</th>
+                            <th className="px-4 py-2 text-left text-xs text-gray-400">Delivery Rate</th>
+                            <th className="px-4 py-2 text-left text-xs text-gray-400">Reply Rate</th>
+                            <th className="px-4 py-2 text-left text-xs text-gray-400">Cost</th>
+                            <th className="px-4 py-2 text-left text-xs text-gray-400">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(statsData.phoneStats || []).map((phoneData: any, index: number) => (
+                            <tr key={index} className="border-b border-tech-border">
+                              <td className="px-4 py-3 font-mono text-sm">{phoneData.phoneNumber}</td>
+                              <td className="px-4 py-3 text-sm font-medium">{phoneData.totalMessages}</td>
+                              <td className="px-4 py-3 text-sm">
+                                <span className="text-primary">{phoneData.outbound}</span>
+                                <span className="text-gray-400 mx-1">/</span>
+                                <span className="text-accent">{phoneData.inbound}</span>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-status-success">{phoneData.delivered}</td>
+                              <td className="px-4 py-3 text-sm text-status-danger">{phoneData.failed}</td>
+                              <td className="px-4 py-3 text-sm">
+                                <span className={phoneData.deliveryRate >= 95 ? 'text-status-success' : 
+                                               phoneData.deliveryRate >= 85 ? 'text-yellow-400' : 'text-status-danger'}>
+                                  {phoneData.deliveryRate}%
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-sm">
+                                <span className={phoneData.replyRate > 0 ? 'text-accent' : 'text-gray-400'}>
+                                  {phoneData.replyRate}%
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-sm">${phoneData.cost}</td>
+                              <td className="px-4 py-3 text-sm">
+                                {phoneData.isActive ? (
+                                  <span className="px-2 py-1 bg-status-success bg-opacity-20 text-status-success rounded-full text-xs">
+                                    🟢 Active
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-1 bg-tech-secondary text-gray-400 rounded-full text-xs">
+                                    Inactive
+                                  </span>
+                                )}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
