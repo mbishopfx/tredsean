@@ -61,6 +61,7 @@ export default function Dashboard() {
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   
   // Tab state
   const [activeTab, setActiveTab] = useState('message-editor');
@@ -185,9 +186,17 @@ export default function Dashboard() {
       setLoadingCrmContacts(false);
     }
   };
-  // Check if user is authenticated
+
+  // First useEffect: Handle mounting state to prevent hydration mismatch
   useEffect(() => {
-    // Prevent hydration mismatch by only running auth check on client
+    setMounted(true);
+  }, []);
+
+  // Check if user is authenticated - only after component is mounted
+  useEffect(() => {
+    if (!mounted) return;
+    
+    // Prevent hydration mismatch by only running auth check on client after mount
     const checkAuth = () => {
       try {
         // UNPROTECTED: Auto-authenticate for deployment
@@ -210,7 +219,7 @@ export default function Dashboard() {
     
     // Only run this on the client, after mount to prevent hydration issues
     checkAuth();
-  }, [logActivity]);
+  }, [mounted, logActivity]);
   
   // Get available audio devices - must be in consistent hook order
   useEffect(() => {
@@ -404,7 +413,7 @@ export default function Dashboard() {
   };
   
   // Show loading state or prevent hydration mismatch
-  if (loading) {
+  if (!mounted || loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-tech-background">
         <div className="text-center">
@@ -2566,8 +2575,10 @@ export default function Dashboard() {
                         <button
                           className="text-xs px-3 py-1 bg-tech-secondary hover:bg-tech-border rounded-md text-gray-300 flex items-center transition-colors duration-200"
                           onClick={() => {
-                            // Copy to clipboard
-                            navigator.clipboard.writeText(rebuttalResponse);
+                            // Copy to clipboard - guard against SSR
+                            if (typeof window !== 'undefined' && navigator.clipboard) {
+                              navigator.clipboard.writeText(rebuttalResponse);
+                            }
                           }}
                         >
                           <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
