@@ -1,189 +1,222 @@
 import { NextRequest, NextResponse } from 'next/server';
-import twilio from 'twilio';
+import fs from 'fs';
+import path from 'path';
 
-interface BatchSendRequest {
+interface ScheduledMessage {
+  id: string;
   campaignId: string;
-  messageTemplate: {
-    day: number;
-    message: string;
-  };
-  contacts: Array<{
-    phone: string;
-    name?: string;
-    company?: string;
-    email?: string;
-    location?: string;
-    [key: string]: any;
-  }>;
+  contactPhone: string;
+  contactName: string;
+  messageText: string;
+  templateDay: number;
+  scheduledFor: string;
+  status: 'scheduled' | 'sent' | 'delivered' | 'failed';
+  sentAt?: string;
+  twilioSid?: string;
+  error?: string;
 }
 
-// Function to replace template variables in message
-const replaceVariables = (template: string, contact: any): string => {
-  let personalizedMessage = template;
-  
-  // Replace common variables
-  personalizedMessage = personalizedMessage.replace(/{name}/g, contact.name || "there");
-  personalizedMessage = personalizedMessage.replace(/{company}/g, contact.company || "");
-  personalizedMessage = personalizedMessage.replace(/{phone}/g, contact.phone || "");
-  personalizedMessage = personalizedMessage.replace(/{email}/g, contact.email || "");
-  personalizedMessage = personalizedMessage.replace(/{location}/g, contact.location || "");
-  
-  // Replace date/time variables
-  personalizedMessage = personalizedMessage.replace(/{date}/g, new Date().toLocaleDateString());
-  personalizedMessage = personalizedMessage.replace(/{time}/g, new Date().toLocaleTimeString());
-  
-  // Replace any other custom variables
-  Object.keys(contact).forEach(key => {
-    if (key.startsWith('custom_')) {
-      const variableName = key.replace('custom_', '');
-      personalizedMessage = personalizedMessage.replace(
-        new RegExp(`{${variableName}}`, 'g'), 
-        contact[key] || ""
-      );
+// File paths for persistent storage
+const MESSAGES_FILE = path.join(process.cwd(), 'data', 'drip-messages.json');
+
+// Ensure data directory exists
+const ensureDataDir = () => {
+  const dataDir = path.join(process.cwd(), 'data');
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+};
+
+// Read/write scheduled messages
+const getScheduledMessages = (): ScheduledMessage[] => {
+  ensureDataDir();
+  if (!fs.existsSync(MESSAGES_FILE)) {
+    return [];
+  }
+  try {
+    const data = fs.readFileSync(MESSAGES_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error reading scheduled messages:', error);
+    return [];
+  }
+};
+
+const saveScheduledMessages = (messages: ScheduledMessage[]) => {
+  ensureDataDir();
+  try {
+    fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));
+  } catch (error) {
+    console.error('Error saving scheduled messages:', error);
+    throw error;
+  }
+};
+
+// Send SMS via Twilio
+const sendSMSViaTwilio = async (phoneNumber: string, messageText: string): Promise<{success: boolean, sid?: string, error?: string}> => {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/twilio/send-sms`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messages: [{
+          phone: phoneNumber,
+          message: messageText
+        }]
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to send SMS');
     }
-  });
+
+    // Extract result for the single message
+    const result = data.results?.[0];
+    
+    if (result?.success) {
+      return {
+        success: true,
+        sid: result.sid
+      };
+    } else {
+      return {
+        success: false,
+        error: result?.error || 'Unknown SMS sending error'
+      };
+    }
+
+  } catch (error) {
+    console.error('Error sending SMS via Twilio:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+};
+
+// Process due messages
+const processDueMessages = async (): Promise<{processed: number, sent: number, failed: number}> => {
+  const messages = getScheduledMessages();
+  const now = new Date();
   
-  return personalizedMessage;
+  // Find messages that are due to be sent
+  const dueMessages = messages.filter(msg => 
+    msg.status === 'scheduled' && 
+    new Date(msg.scheduledFor) <= now
+  );
+
+  console.log(`📧 Processing ${dueMessages.length} due messages...`);
+
+  let processed = 0;
+  let sent = 0;
+  let failed = 0;
+
+  for (const message of dueMessages) {
+    processed++;
+    
+    console.log(`📱 Sending message ${processed}/${dueMessages.length}: ${message.contactName} (${message.contactPhone})`);
+
+    // Send the message via Twilio
+    const result = await sendSMSViaTwilio(message.contactPhone, message.messageText);
+    
+    if (result.success) {
+      // Update message status to sent
+      message.status = 'sent';
+      message.sentAt = new Date().toISOString();
+      message.twilioSid = result.sid;
+      sent++;
+      
+      console.log(`✅ Message sent successfully to ${message.contactName} - SID: ${result.sid}`);
+    } else {
+      // Update message status to failed
+      message.status = 'failed';
+      message.error = result.error;
+      failed++;
+      
+      console.log(`❌ Failed to send message to ${message.contactName}: ${result.error}`);
+    }
+
+    // Add a small delay to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+
+  // Save updated messages back to storage
+  if (processed > 0) {
+    saveScheduledMessages(messages);
+  }
+
+  return { processed, sent, failed };
 };
 
 export async function POST(request: NextRequest) {
   try {
-    const data: BatchSendRequest = await request.json();
+    console.log('🚀 Starting drip campaign message batch processing...');
     
-    // Validate required fields
-    if (!data.campaignId || !data.messageTemplate || !data.contacts) {
-      return NextResponse.json(
-        { error: 'Missing required fields: campaignId, messageTemplate, or contacts' },
-        { status: 400 }
-      );
-    }
+    const stats = await processDueMessages();
     
-    if (data.contacts.length === 0) {
-      return NextResponse.json(
-        { error: 'No contacts provided' },
-        { status: 400 }
-      );
-    }
-    
-    // Get Twilio credentials from environment variables
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
-    
-    if (!accountSid || !authToken || !twilioPhone) {
-      console.warn('Twilio configuration missing, using mock response');
-      // Return mock success for testing
-      return NextResponse.json({
-        success: true,
-        message: `Mock: Would send ${data.contacts.length} messages for campaign ${data.campaignId}`,
-        results: data.contacts.map(contact => ({
-          phone: contact.phone,
-          success: true,
-          sid: `mock_${Date.now()}_${Math.random()}`,
-          status: 'queued'
-        })),
-        summary: {
-          total: data.contacts.length,
-          successful: data.contacts.length,
-          failed: 0,
-          campaignId: data.campaignId,
-          messageDay: data.messageTemplate.day
-        }
-      });
-    }
-    
-    // Initialize Twilio client
-    const client = twilio(accountSid, authToken);
-    
-    // Prepare personalized messages
-    const messages = data.contacts.map(contact => {
-      const personalizedMessage = replaceVariables(data.messageTemplate.message, contact);
-      
-      return {
-        phone: contact.phone,
-        message: personalizedMessage,
-        contactName: contact.name || 'Unknown'
-      };
-    });
-    
-    console.log(`Sending ${messages.length} drip campaign messages for campaign ${data.campaignId}, day ${data.messageTemplate.day}`);
-    
-    // Send messages in parallel using existing Twilio infrastructure
-    const results = await Promise.all(
-      messages.map(async ({ phone, message, contactName }) => {
-        try {
-          // Format phone number for Twilio
-          let formattedPhone = phone.trim();
-          
-          if (!formattedPhone.startsWith('+') && formattedPhone.length > 6) {
-            if (/^\d{10}$/.test(formattedPhone)) {
-              formattedPhone = `+1${formattedPhone}`;
-            } else if (/^1\d{10,}$/.test(formattedPhone)) {
-              formattedPhone = `+${formattedPhone}`;
-            } else if (/^\d{11,}$/.test(formattedPhone)) {
-              formattedPhone = `+${formattedPhone}`;
-            }
-          }
-          
-          formattedPhone = formattedPhone.startsWith('+') 
-            ? '+' + formattedPhone.substring(1).replace(/\D/g, '')
-            : formattedPhone.replace(/\D/g, '');
-          
-          console.log(`Sending drip message to ${contactName} (${formattedPhone}): ${message.substring(0, 50)}...`);
-          
-          // Send message via Twilio
-          const smsResponse = await client.messages.create({
-            body: message,
-            from: twilioPhone,
-            to: formattedPhone
-          });
-          
-          return {
-            phone: formattedPhone,
-            contactName,
-            success: true,
-            sid: smsResponse.sid,
-            status: smsResponse.status,
-            campaignId: data.campaignId,
-            messageDay: data.messageTemplate.day
-          };
-        } catch (error: any) {
-          console.error(`Error sending drip message to ${contactName} (${phone}):`, error.message);
-          return {
-            phone,
-            contactName,
-            success: false,
-            error: error.message,
-            campaignId: data.campaignId,
-            messageDay: data.messageTemplate.day
-          };
-        }
-      })
-    );
-    
-    // Count successful and failed messages
-    const successful = results.filter(r => r.success).length;
-    const failed = results.length - successful;
-    
-    console.log(`Drip campaign batch complete: ${successful} sent, ${failed} failed for campaign ${data.campaignId}`);
-    
+    console.log(`📊 Batch processing completed:`);
+    console.log(`   - Processed: ${stats.processed} messages`);
+    console.log(`   - Sent: ${stats.sent} messages`);
+    console.log(`   - Failed: ${stats.failed} messages`);
+
     return NextResponse.json({
       success: true,
-      message: `Drip campaign messages sent: ${successful} successful, ${failed} failed`,
-      results,
-      summary: {
-        total: results.length,
-        successful,
-        failed,
-        campaignId: data.campaignId,
-        messageDay: data.messageTemplate.day
-      }
+      message: `Processed ${stats.processed} messages. ${stats.sent} sent, ${stats.failed} failed.`,
+      stats
     });
+
+  } catch (error) {
+    console.error('Error processing drip campaign messages:', error);
+    return NextResponse.json(
+      { error: 'Failed to process drip campaign messages' },
+      { status: 500 }
+    );
+  }
+}
+
+// GET endpoint to check pending messages
+export async function GET(request: NextRequest) {
+  try {
+    const messages = getScheduledMessages();
+    const now = new Date();
     
-  } catch (error: any) {
-    console.error('Error in drip campaign batch send:', error);
-    return NextResponse.json({ 
-      error: error.message || 'An error occurred while sending drip campaign messages.' 
-    }, { status: 500 });
+    const dueMessages = messages.filter(msg => 
+      msg.status === 'scheduled' && 
+      new Date(msg.scheduledFor) <= now
+    );
+
+    const upcomingMessages = messages.filter(msg => 
+      msg.status === 'scheduled' && 
+      new Date(msg.scheduledFor) > now
+    );
+
+    const sentMessages = messages.filter(msg => msg.status === 'sent' || msg.status === 'delivered');
+    const failedMessages = messages.filter(msg => msg.status === 'failed');
+
+    return NextResponse.json({
+      success: true,
+      summary: {
+        dueNow: dueMessages.length,
+        upcoming: upcomingMessages.length,
+        sent: sentMessages.length,
+        failed: failedMessages.length,
+        total: messages.length
+      },
+      dueMessages: dueMessages.slice(0, 10), // Show first 10 due messages
+      nextDueDate: upcomingMessages.length > 0 
+        ? upcomingMessages.sort((a, b) => new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime())[0].scheduledFor
+        : null
+    });
+
+  } catch (error) {
+    console.error('Error checking drip campaign messages:', error);
+    return NextResponse.json(
+      { error: 'Failed to check drip campaign messages' },
+      { status: 500 }
+    );
   }
 } 

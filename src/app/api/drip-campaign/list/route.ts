@@ -1,106 +1,112 @@
 import { NextRequest, NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
 
-// Mock data for testing - in production, this would come from a database
-const mockCampaigns = [
-  {
-    id: 'camp_1',
-    name: 'Real Estate Q1 2024',
-    status: 'active',
-    totalContacts: 156,
-    sentMessages: 342,
-    replies: 19,
-    deliveredMessages: 335,
-    failedMessages: 7,
-    created: '2024-01-15T10:00:00Z',
-    lastActivity: '2024-01-20T14:30:00Z',
-    nextScheduledMessage: '2024-01-21T09:00:00Z',
-    completionRate: 45.2
-  },
-  {
-    id: 'camp_2', 
-    name: 'Lead Follow-up December',
-    status: 'paused',
-    totalContacts: 89,
-    sentMessages: 178,
-    replies: 12,
-    deliveredMessages: 170,
-    failedMessages: 8,
-    created: '2023-12-01T09:00:00Z',
-    lastActivity: '2024-01-19T11:15:00Z',
-    nextScheduledMessage: null,
-    completionRate: 67.8
-  },
-  {
-    id: 'camp_3',
-    name: 'Commercial Property Outreach',
-    status: 'active',
-    totalContacts: 203,
-    sentMessages: 487,
-    replies: 31,
-    deliveredMessages: 478,
-    failedMessages: 9,
-    created: '2024-01-10T08:00:00Z',
-    lastActivity: '2024-01-20T16:45:00Z',
-    nextScheduledMessage: '2024-01-22T10:00:00Z',
-    completionRate: 32.1
-  },
-  {
-    id: 'camp_4',
-    name: 'Investor Networking Campaign',
-    status: 'active',
-    totalContacts: 124,
-    sentMessages: 298,
-    replies: 22,
-    deliveredMessages: 291,
-    failedMessages: 7,
-    created: '2024-01-18T14:00:00Z',
-    lastActivity: '2024-01-20T12:30:00Z',
-    nextScheduledMessage: '2024-01-21T15:00:00Z',
-    completionRate: 38.7
-  },
-  {
-    id: 'camp_5',
-    name: 'Luxury Home Buyers',
-    status: 'active',
-    totalContacts: 67,
-    sentMessages: 134,
-    replies: 8,
-    deliveredMessages: 131,
-    failedMessages: 3,
-    created: '2024-01-19T11:00:00Z',
-    lastActivity: '2024-01-20T10:15:00Z',
-    nextScheduledMessage: '2024-01-21T11:30:00Z',
-    completionRate: 23.9
-  },
-  {
-    id: 'camp_6',
-    name: 'First Time Home Buyers',
-    status: 'completed',
-    totalContacts: 95,
-    sentMessages: 855,
-    replies: 43,
-    deliveredMessages: 847,
-    failedMessages: 8,
-    created: '2023-11-15T09:00:00Z',
-    lastActivity: '2024-01-15T17:00:00Z',
-    nextScheduledMessage: null,
-    completionRate: 100
-  },
-  {
-    id: 'camp_7',
-    name: 'Property Management Leads',
-    status: 'active',
-    totalContacts: 178,
-    sentMessages: 267,
-    replies: 15,
-    deliveredMessages: 261,
-    failedMessages: 6,
-    created: '2024-01-20T16:00:00Z',
-    lastActivity: '2024-01-20T18:20:00Z',
-    nextScheduledMessage: '2024-01-23T09:00:00Z',
-    completionRate: 18.5
+// TypeScript interfaces
+interface ScheduledMessage {
+  id: string;
+  campaignId: string;
+  contactPhone: string;
+  contactName: string;
+  messageText: string;
+  templateDay: number;
+  scheduledFor: string;
+  status: 'scheduled' | 'sent' | 'delivered' | 'failed';
+  sentAt?: string;
+  twilioSid?: string;
+  error?: string;
+}
+
+interface Campaign {
+  id: string;
+  name: string;
+  status: 'active' | 'paused' | 'completed';
+  totalContacts: number;
+  sentMessages: number;
+  replies: number;
+  deliveredMessages: number;
+  failedMessages: number;
+  created: string;
+  lastActivity?: string;
+  nextScheduledMessage?: string;
+  completionRate: number;
+}
+
+// Simple JSON file-based storage for campaigns (in production, use a real database)
+const CAMPAIGNS_FILE = path.join(process.cwd(), 'data', 'drip-campaigns.json');
+const MESSAGES_FILE = path.join(process.cwd(), 'data', 'drip-messages.json');
+
+// Ensure data directory exists
+const ensureDataDir = () => {
+  const dataDir = path.join(process.cwd(), 'data');
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
   }
-];
+};
+
+// Read campaigns from storage
+const getCampaigns = (): Campaign[] => {
+  ensureDataDir();
+  if (!fs.existsSync(CAMPAIGNS_FILE)) {
+    return [];
+  }
+  try {
+    const data = fs.readFileSync(CAMPAIGNS_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error reading campaigns:', error);
+    return [];
+  }
+};
+
+// Read scheduled messages from storage
+const getScheduledMessages = (): ScheduledMessage[] => {
+  ensureDataDir();
+  if (!fs.existsSync(MESSAGES_FILE)) {
+    return [];
+  }
+  try {
+    const data = fs.readFileSync(MESSAGES_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error reading scheduled messages:', error);
+    return [];
+  }
+};
+
+// Calculate campaign statistics from Twilio message history
+const calculateCampaignStats = async (campaignId: string) => {
+  try {
+    const scheduledMessages = getScheduledMessages();
+    const campaignMessages = scheduledMessages.filter((msg: ScheduledMessage) => msg.campaignId === campaignId);
+    
+    // For each message, check if it was sent via Twilio
+    // This would typically query your message delivery logs
+    const stats = {
+      sentMessages: campaignMessages.filter((msg: ScheduledMessage) => msg.status === 'sent' || msg.status === 'delivered').length,
+      deliveredMessages: campaignMessages.filter((msg: ScheduledMessage) => msg.status === 'delivered').length,
+      failedMessages: campaignMessages.filter((msg: ScheduledMessage) => msg.status === 'failed').length,
+      replies: 0, // This would come from Twilio webhook data
+      completionRate: 0
+    };
+    
+    // Calculate completion rate based on scheduled vs sent messages
+    const totalScheduled = campaignMessages.length;
+    const totalSent = stats.sentMessages;
+    stats.completionRate = totalScheduled > 0 ? (totalSent / totalScheduled) * 100 : 0;
+    
+    return stats;
+  } catch (error) {
+    console.error('Error calculating campaign stats:', error);
+    return {
+      sentMessages: 0,
+      deliveredMessages: 0,
+      failedMessages: 0,
+      replies: 0,
+      completionRate: 0
+    };
+  }
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -110,46 +116,67 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0');
     const search = searchParams.get('search');
     
+    // Get campaigns from storage
+    let campaigns = getCampaigns();
+    
+    // Enhance campaigns with real-time statistics
+    for (const campaign of campaigns) {
+      const stats = await calculateCampaignStats(campaign.id);
+      Object.assign(campaign, stats);
+      
+      // Update last activity based on recent message activity
+      const scheduledMessages = getScheduledMessages();
+      const campaignMessages = scheduledMessages.filter((msg: ScheduledMessage) => msg.campaignId === campaign.id);
+      const latestMessage = campaignMessages
+        .filter((msg: ScheduledMessage) => msg.sentAt)
+        .sort((a: ScheduledMessage, b: ScheduledMessage) => new Date(b.sentAt!).getTime() - new Date(a.sentAt!).getTime())[0];
+      
+      if (latestMessage) {
+        campaign.lastActivity = latestMessage.sentAt;
+      }
+      
+      // Calculate next scheduled message
+      const nextMessage = campaignMessages
+        .filter((msg: ScheduledMessage) => msg.status === 'scheduled' && new Date(msg.scheduledFor) > new Date())
+        .sort((a: ScheduledMessage, b: ScheduledMessage) => new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime())[0];
+      
+      campaign.nextScheduledMessage = nextMessage ? nextMessage.scheduledFor : undefined;
+    }
+    
     // Filter campaigns based on query parameters
-    let filteredCampaigns = [...mockCampaigns];
+    let filteredCampaigns = [...campaigns];
     
     // Filter by status
     if (status && status !== 'all') {
-      filteredCampaigns = filteredCampaigns.filter(campaign => campaign.status === status);
+      filteredCampaigns = filteredCampaigns.filter((campaign: Campaign) => campaign.status === status);
     }
     
     // Search filter
     if (search) {
       const searchLower = search.toLowerCase();
-      filteredCampaigns = filteredCampaigns.filter(campaign => 
+      filteredCampaigns = filteredCampaigns.filter((campaign: Campaign) => 
         campaign.name.toLowerCase().includes(searchLower)
       );
     }
     
     // Sort by most recent activity
-    filteredCampaigns.sort((a, b) => 
-      new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime()
+    filteredCampaigns.sort((a: Campaign, b: Campaign) => 
+      new Date(b.lastActivity || b.created).getTime() - new Date(a.lastActivity || a.created).getTime()
     );
     
     // Pagination
     const total = filteredCampaigns.length;
-    const campaigns = filteredCampaigns.slice(offset, offset + limit);
+    const paginatedCampaigns = filteredCampaigns.slice(offset, offset + limit);
     
     // Calculate summary stats
-    const activeCampaigns = mockCampaigns.filter(c => c.status === 'active').length;
-    const totalContacts = mockCampaigns.reduce((sum, c) => sum + c.totalContacts, 0);
-    const totalMessages = mockCampaigns.reduce((sum, c) => sum + c.sentMessages, 0);
-    const totalReplies = mockCampaigns.reduce((sum, c) => sum + c.replies, 0);
-    
-    // In a real application, you would:
-    // 1. Verify user authentication
-    // 2. Query your database for campaigns belonging to the user
-    // 3. Apply proper filtering and pagination
-    // 4. Calculate real-time statistics
+    const activeCampaigns = campaigns.filter((c: Campaign) => c.status === 'active').length;
+    const totalContacts = campaigns.reduce((sum: number, c: Campaign) => sum + (c.totalContacts || 0), 0);
+    const totalMessages = campaigns.reduce((sum: number, c: Campaign) => sum + (c.sentMessages || 0), 0);
+    const totalReplies = campaigns.reduce((sum: number, c: Campaign) => sum + (c.replies || 0), 0);
     
     return NextResponse.json({
       success: true,
-      campaigns,
+      campaigns: paginatedCampaigns,
       pagination: {
         total,
         limit,
@@ -158,7 +185,7 @@ export async function GET(request: NextRequest) {
       },
       summary: {
         activeCampaigns,
-        totalCampaigns: mockCampaigns.length,
+        totalCampaigns: campaigns.length,
         totalContacts,
         totalMessages,
         totalReplies,

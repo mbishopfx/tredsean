@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
 
 interface MessageTemplate {
   day: number;
@@ -22,37 +24,145 @@ interface CreateCampaignRequest {
   variables: string[];
 }
 
-// Mock function to generate campaign ID
-const generateCampaignId = () => `camp_${Date.now()}`;
+interface ScheduledMessage {
+  id: string;
+  campaignId: string;
+  contactPhone: string;
+  contactName: string;
+  messageText: string;
+  templateDay: number;
+  scheduledFor: string;
+  status: 'scheduled' | 'sent' | 'delivered' | 'failed';
+  sentAt?: string;
+  twilioSid?: string;
+  error?: string;
+}
 
-// Mock function to schedule messages (in production, this would use a job queue)
-const scheduleDripMessages = async (campaignId: string, messageTemplates: MessageTemplate[], contacts: Contact[]) => {
-  console.log(`Scheduling ${messageTemplates.length} message templates for ${contacts.length} contacts in campaign ${campaignId}`);
+// File paths for persistent storage
+const CAMPAIGNS_FILE = path.join(process.cwd(), 'data', 'drip-campaigns.json');
+const MESSAGES_FILE = path.join(process.cwd(), 'data', 'drip-messages.json');
+
+// Ensure data directory exists
+const ensureDataDir = () => {
+  const dataDir = path.join(process.cwd(), 'data');
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+};
+
+// Read/write campaigns to storage
+const getCampaigns = () => {
+  ensureDataDir();
+  if (!fs.existsSync(CAMPAIGNS_FILE)) {
+    return [];
+  }
+  try {
+    const data = fs.readFileSync(CAMPAIGNS_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error reading campaigns:', error);
+    return [];
+  }
+};
+
+const saveCampaigns = (campaigns: any[]) => {
+  ensureDataDir();
+  try {
+    fs.writeFileSync(CAMPAIGNS_FILE, JSON.stringify(campaigns, null, 2));
+  } catch (error) {
+    console.error('Error saving campaigns:', error);
+    throw error;
+  }
+};
+
+// Read/write scheduled messages
+const getScheduledMessages = () => {
+  ensureDataDir();
+  if (!fs.existsSync(MESSAGES_FILE)) {
+    return [];
+  }
+  try {
+    const data = fs.readFileSync(MESSAGES_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error reading scheduled messages:', error);
+    return [];
+  }
+};
+
+const saveScheduledMessages = (messages: ScheduledMessage[]) => {
+  ensureDataDir();
+  try {
+    fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));
+  } catch (error) {
+    console.error('Error saving scheduled messages:', error);
+    throw error;
+  }
+};
+
+// Replace variables in message text
+const replaceVariables = (messageText: string, contact: Contact): string => {
+  let processedMessage = messageText;
   
-  // In a real implementation, you would:
-  // 1. Store campaign data in database
-  // 2. Schedule messages using a job queue (like Bull, Agenda, or cloud functions)
-  // 3. Set up reply tracking webhooks
-  // 4. Initialize campaign statistics
+  // Replace standard variables
+  processedMessage = processedMessage.replace(/{name}/g, contact.name || "there");
+  processedMessage = processedMessage.replace(/{company}/g, contact.company || "");
+  processedMessage = processedMessage.replace(/{phone}/g, contact.phone || "");
+  processedMessage = processedMessage.replace(/{email}/g, contact.email || "");
+  processedMessage = processedMessage.replace(/{location}/g, contact.location || "");
   
-  const schedulePromises = contacts.map(contact => {
-    return messageTemplates.map(template => {
+  // Replace date/time variables
+  processedMessage = processedMessage.replace(/{date}/g, new Date().toLocaleDateString());
+  processedMessage = processedMessage.replace(/{time}/g, new Date().toLocaleTimeString());
+  
+  // Replace any custom variables from contact
+  Object.keys(contact).forEach(key => {
+    if (key !== 'name' && key !== 'phone' && key !== 'company' && key !== 'email' && key !== 'location') {
+      const regex = new RegExp(`{${key}}`, 'g');
+      processedMessage = processedMessage.replace(regex, contact[key] || "");
+    }
+  });
+  
+  return processedMessage;
+};
+
+// Generate campaign ID
+const generateCampaignId = () => `camp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+// Generate message ID  
+const generateMessageId = () => `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+// Schedule drip messages
+const scheduleDripMessages = async (campaignId: string, messageTemplates: MessageTemplate[], contacts: Contact[]): Promise<ScheduledMessage[]> => {
+  const scheduledMessages: ScheduledMessage[] = [];
+  
+  for (const contact of contacts) {
+    for (const template of messageTemplates) {
+      if (!template.active) continue;
+      
+      // Calculate send date
       const sendDate = new Date();
       sendDate.setDate(sendDate.getDate() + template.day);
       
-      return {
+      // Process message text with variables
+      const personalizedMessage = replaceVariables(template.message, contact);
+      
+      const scheduledMessage: ScheduledMessage = {
+        id: generateMessageId(),
         campaignId,
-        contactId: contact.phone,
+        contactPhone: contact.phone,
         contactName: contact.name,
-        messageTemplate: template,
+        messageText: personalizedMessage,
+        templateDay: template.day,
         scheduledFor: sendDate.toISOString(),
         status: 'scheduled'
       };
-    });
-  }).flat();
+      
+      scheduledMessages.push(scheduledMessage);
+    }
+  }
   
-  console.log(`Created ${schedulePromises.length} scheduled messages`);
-  return schedulePromises;
+  return scheduledMessages;
 };
 
 export async function POST(request: NextRequest) {
@@ -74,9 +184,10 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    if (data.messageTemplates.length === 0) {
+    const activeTemplates = data.messageTemplates.filter(t => t.active && t.message.trim());
+    if (activeTemplates.length === 0) {
       return NextResponse.json(
-        { error: 'At least one message template is required' },
+        { error: 'At least one active message template is required' },
         { status: 400 }
       );
     }
@@ -112,28 +223,35 @@ export async function POST(request: NextRequest) {
     
     // Schedule drip messages
     try {
-      const scheduledMessages = await scheduleDripMessages(
-        campaignId, 
-        data.messageTemplates.filter(t => t.active), 
-        data.contacts
-      );
+      const scheduledMessages = await scheduleDripMessages(campaignId, activeTemplates, data.contacts);
       
-      console.log(`Campaign ${campaignId} created with ${scheduledMessages.length} scheduled messages`);
+      // Save campaign to storage
+      const campaigns = getCampaigns();
+      campaigns.push(campaign);
+      saveCampaigns(campaigns);
       
-      // In production, you would:
-      // 1. Save campaign to database
-      // 2. Save scheduled messages to job queue
-      // 3. Set up monitoring and webhooks
+      // Save scheduled messages to storage
+      const existingMessages = getScheduledMessages();
+      const allMessages = [...existingMessages, ...scheduledMessages];
+      saveScheduledMessages(allMessages);
+      
+      console.log(`✅ Campaign ${campaignId} created successfully:`);
+      console.log(`   - Name: ${campaign.name}`);
+      console.log(`   - Contacts: ${campaign.totalContacts}`);
+      console.log(`   - Scheduled Messages: ${scheduledMessages.length}`);
+      console.log(`   - Active Templates: ${activeTemplates.length}`);
       
       return NextResponse.json({
         success: true,
-        message: 'Drip campaign created successfully',
+        message: 'Drip campaign created successfully! Messages will be sent according to schedule.',
         campaign: {
           id: campaign.id,
           name: campaign.name,
           status: campaign.status,
           totalContacts: campaign.totalContacts,
-          scheduledMessages: scheduledMessages.length
+          scheduledMessages: scheduledMessages.length,
+          activeTemplates: activeTemplates.length,
+          created: campaign.created
         }
       });
       
