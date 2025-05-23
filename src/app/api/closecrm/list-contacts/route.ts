@@ -4,35 +4,50 @@ import { getCloseClient, handleCloseApiError } from '../utils';
 export async function GET(request: NextRequest) {
   try {
     const client = getCloseClient();
-    const limit = 100; // Max number of contacts to fetch
-
+    
     // Get search parameters (optional)
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('query') || '';
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const skip = (page - 1) * limit;
+    const requestedPage = parseInt(searchParams.get('page') || '1', 10);
     
-    console.log(`Fetching contacts from Close CRM, page ${page}, query: "${query}"`);
+    console.log(`Fetching contacts from Close CRM, page ${requestedPage}, query: "${query}"`);
     
-    // First, fetch leads to get the leads with contacts
-    const leadsResponse = await client.get('/lead/', {
+    // First, get the total count
+    const initialResponse = await client.get('/lead/', {
       params: {
-        _limit: limit,
-        _skip: skip,
+        _limit: 1,
+        _skip: 0,
         query: query
       }
     });
     
-    if (!leadsResponse.data.data || !Array.isArray(leadsResponse.data.data)) {
-      throw new Error('Invalid response format from Close CRM API');
+    const totalLeads = initialResponse.data.total_results || 0;
+    console.log(`Total leads in Close CRM: ${totalLeads}`);
+    
+    // Now fetch ALL leads to get all contacts
+    const allLeads = [];
+    const batchSize = 100; // Close CRM max limit per request
+    
+    for (let skip = 0; skip < totalLeads; skip += batchSize) {
+      const batchResponse = await client.get('/lead/', {
+        params: {
+          _limit: batchSize,
+          _skip: skip,
+          query: query
+        }
+      });
+      
+      if (batchResponse.data.data && Array.isArray(batchResponse.data.data)) {
+        allLeads.push(...batchResponse.data.data);
+      }
     }
     
-    const leads = leadsResponse.data.data;
+    console.log(`Fetched ${allLeads.length} leads total`);
     
-    // Extract contact information from leads
+    // Extract contact information from ALL leads
     const contacts = [];
     
-    for (const lead of leads) {
+    for (const lead of allLeads) {
       if (lead.contacts && Array.isArray(lead.contacts)) {
         for (const contact of lead.contacts) {
           if (contact.phones && Array.isArray(contact.phones) && contact.phones.length > 0) {
@@ -57,13 +72,15 @@ export async function GET(request: NextRequest) {
     // Sort contacts by name
     contacts.sort((a, b) => a.name.localeCompare(b.name));
     
+    console.log(`Extracted ${contacts.length} contacts with phone numbers`);
+    
     return NextResponse.json({
       success: true,
       contacts,
       pagination: {
-        page,
-        limit,
-        total: leadsResponse.data.total_results || 0
+        page: requestedPage,
+        limit: contacts.length,
+        total: contacts.length
       }
     });
   } catch (error) {

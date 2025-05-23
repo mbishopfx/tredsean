@@ -363,5 +363,37 @@
     "details": {
       "page": "dashboard"
     }
+  },
+  {
+    "timestamp": "2025-05-23T21:36:06.484Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-05-23T21:36:06.488Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-05-23T21:36:11.347Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-05-23T21:36:11.366Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
   }
 ]
