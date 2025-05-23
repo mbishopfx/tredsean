@@ -259,5 +259,109 @@
     "details": {
       "page": "dashboard"
     }
+  },
+  {
+    "timestamp": "2025-05-23T21:31:15.240Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-05-23T21:31:44.606Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-05-23T21:31:44.612Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-05-23T21:32:03.507Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-05-23T21:32:03.511Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-05-23T21:32:19.006Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-05-23T21:32:19.009Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-05-23T21:32:44.776Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-05-23T21:32:44.779Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-05-23T21:33:21.177Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-05-23T21:33:21.180Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-05-23T21:33:41.558Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-05-23T21:33:41.560Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
   }
 ]

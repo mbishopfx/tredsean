@@ -174,26 +174,41 @@ function DashboardContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Add function to fetch contacts from CloseCRM
-  const fetchCrmContacts = async (page = 1, query = '') => {
-    if (contactSource !== 'crm') return;
+  const fetchCrmContacts = async (page = 1, query = '', forceSource?: 'crm' | 'file') => {
+    const sourceToCheck = forceSource || contactSource;
     
+    if (sourceToCheck !== 'crm') {
+      console.log('📞 fetchCrmContacts: Not CRM source, skipping. Current source:', sourceToCheck);
+      return;
+    }
+    
+    console.log('📞 fetchCrmContacts: Starting fetch. Page:', page, 'Query:', query, 'Source:', sourceToCheck);
     setLoadingCrmContacts(true);
     
     try {
-      const response = await fetch(`/api/closecrm/list-contacts?page=${page}&query=${encodeURIComponent(query)}`);
+      const url = `/api/closecrm/list-contacts?page=${page}&query=${encodeURIComponent(query)}`;
+      console.log('📞 fetchCrmContacts: Fetching from URL:', url);
+      
+      const response = await fetch(url);
       const data = await response.json();
+      
+      console.log('📞 fetchCrmContacts: Response status:', response.status);
+      console.log('📞 fetchCrmContacts: Response data:', data);
       
       if (!response.ok) {
         throw new Error(data.error || 'Failed to fetch contacts');
       }
       
-      setCrmContacts(data.contacts || []);
+      const contacts = data.contacts || [];
+      console.log('📞 fetchCrmContacts: Setting contacts count:', contacts.length);
+      setCrmContacts(contacts);
       setCrmContactsPage(page);
     } catch (error) {
-      console.error('Error fetching CRM contacts:', error);
+      console.error('📞 fetchCrmContacts: Error fetching CRM contacts:', error);
       // Leave previous contacts if there was an error
     } finally {
       setLoadingCrmContacts(false);
+      console.log('📞 fetchCrmContacts: Completed');
     }
   };
 
@@ -369,9 +384,15 @@ function DashboardContent() {
   
   // Fetch CRM contacts when contact source changes to 'crm' or search term changes
   useEffect(() => {
+    console.log('📞 useEffect for CRM contacts triggered. contactSource:', contactSource, 'crmContactSearch:', crmContactSearch);
+    
     // Only actually fetch if source is CRM
     if (contactSource === 'crm') {
+      console.log('📞 useEffect: Calling fetchCrmContacts');
       fetchCrmContacts(1, crmContactSearch);
+    } else {
+      console.log('📞 useEffect: Not CRM source, clearing contacts');
+      setCrmContacts([]);
     }
   }, [contactSource, crmContactSearch]);
   
@@ -1010,10 +1031,25 @@ function DashboardContent() {
   
   // Reset the form when changing contact source
   const handleContactSourceChange = (source: 'crm' | 'file') => {
+    console.log('📞 Contact source changing from', contactSource, 'to', source);
     setContactSource(source);
     setPhoneNumbers([]);
     setFileName('');
     setSelectedCrmContacts([]);
+    
+    // If switching to CRM, immediately fetch contacts
+    if (source === 'crm') {
+      console.log('📞 Switching to CRM - fetching contacts immediately');
+      // Use setTimeout to ensure state has updated
+      setTimeout(() => {
+        fetchCrmContacts(1, '', 'crm');
+      }, 100);
+    } else {
+      // Clear CRM contacts when switching away
+      setCrmContacts([]);
+      setCrmContactSearch('');
+      setCrmContactsPage(1);
+    }
   };
 
   // Drip Campaign Handlers
@@ -1557,6 +1593,15 @@ function DashboardContent() {
                               </svg>
                             </div>
                           </div>
+                          <button 
+                            onClick={() => {
+                              console.log('📞 Manual refresh clicked');
+                              fetchCrmContacts(1, crmContactSearch, 'crm');
+                            }}
+                            className="mt-2 w-full py-2 px-3 bg-primary hover:bg-primary-dark text-white rounded-md text-sm transition-colors duration-200"
+                          >
+                            🔄 Refresh CRM Contacts ({crmContacts.length} loaded)
+                          </button>
                         </div>
                         
                         <div className="border border-tech-border rounded-md bg-tech-secondary bg-opacity-20 overflow-y-auto max-h-64 scrollbar-thin">
