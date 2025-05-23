@@ -192,24 +192,37 @@ export default function Dashboard() {
     // Need to make sure we only run this on the client
     const checkAuth = () => {
       try {
+        // UNPROTECTED: Auto-authenticate for deployment
         // Check localStorage for auth
-        const auth = localStorage.getItem('isAuthenticated');
-        console.log('Authentication check:', !!auth);
+        // const auth = localStorage.getItem('isAuthenticated');
+        // console.log('Authentication check:', !!auth);
         
-        setIsAuthenticated(!!auth);
+        // Auto-set as authenticated for deployment
+        setIsAuthenticated(true);
         setLoading(false);
         
-        if (!auth) {
-          console.log('Not authenticated, redirecting to login');
-          window.location.href = '/login';
-        } else {
-          // Log user session activity
-          const username = localStorage.getItem('username') || 'unknown';
+        // COMMENTED OUT: Remove login redirect for unprotected deployment
+        // if (!auth) {
+        //   console.log('Not authenticated, redirecting to login');
+        //   window.location.href = '/login';
+        // } else {
+        //   // Log user session activity
+        //   const username = localStorage.getItem('username') || 'unknown';
+        //   logActivity('page_view', { page: 'dashboard' });
+        // }
+        
+        // Set default username for activity logging
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('isAuthenticated', 'true');
+          localStorage.setItem('username', 'demo-user');
           logActivity('page_view', { page: 'dashboard' });
         }
       } catch (error) {
         // This will catch any errors if localStorage isn't available yet
         console.error('Auth check error:', error);
+        // Still set as authenticated for deployment
+        setIsAuthenticated(true);
+        setLoading(false);
       }
     };
     
@@ -438,12 +451,16 @@ export default function Dashboard() {
 
   const handleSignOut = () => {
     // Log sign out activity before removing authentication
-    const username = localStorage.getItem('username') || 'unknown';
+    const username = localStorage.getItem('username') || 'demo-user';
     logActivity('logout');
     
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('username');
-    window.location.href = '/login';
+    // UNPROTECTED DEPLOYMENT: Prevent actual logout
+    alert('Sign out disabled for demo deployment. Refresh page to continue.');
+    
+    // COMMENTED OUT: Actual logout functionality
+    // localStorage.removeItem('isAuthenticated');
+    // localStorage.removeItem('username');
+    // window.location.href = '/login';
   };
 
   // Update handleFileChange to set contact data
