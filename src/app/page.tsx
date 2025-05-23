@@ -2394,8 +2394,8 @@ function DashboardContent() {
                       <div className="grid grid-cols-12 gap-2">
                         {Array.from({length: 24}, (_, i) => {
                           const hour = i.toString().padStart(2, '0') + ':00';
-                          const count = statsData.hourlyBreakdown[hour] || 0;
-                          const maxCount = Math.max(...Object.values(statsData.hourlyBreakdown).map(v => Number(v)));
+                          const count = (statsData.hourlyBreakdown && statsData.hourlyBreakdown[hour]) || 0;
+                          const maxCount = statsData.hourlyBreakdown ? Math.max(...Object.values(statsData.hourlyBreakdown).map(v => Number(v))) : 1;
                           const height = maxCount > 0 ? (count / maxCount) * 100 : 0;
                           
                           return (
@@ -2435,7 +2435,7 @@ function DashboardContent() {
                             </tr>
                           </thead>
                           <tbody>
-                            {statsData.campaignAnalysis.map((campaign: any, index: number) => (
+                            {(statsData.campaignAnalysis || []).map((campaign: any, index: number) => (
                               <tr key={index} className="border-b border-tech-border">
                                 <td className="px-4 py-3 text-sm">{campaign.phoneNumber}</td>
                                 <td className="px-4 py-3 text-sm">{campaign.messagesInCampaign}</td>
@@ -2467,7 +2467,7 @@ function DashboardContent() {
                   <div className="p-6">
                     <h3 className="text-lg font-medium mb-4">Message Status Breakdown</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {Object.entries(statsData.statusBreakdown).map(([status, count]: [string, any]) => (
+                      {Object.entries(statsData.statusBreakdown || {}).map(([status, count]: [string, any]) => (
                         <div key={status} className="border border-tech-border rounded-md p-3">
                           <div className="text-sm font-medium mb-1 flex justify-between">
                             <span>{status}</span>
@@ -2486,7 +2486,7 @@ function DashboardContent() {
                                 status === 'failed' || status === 'undelivered' ? 'bg-status-danger' : 
                                 'bg-primary'
                               }`}
-                              style={{ width: `${(count / statsData.overview.totalMessages) * 100}%` }}
+                              style={{ width: `${(count / (statsData.overview?.totalMessages || 1)) * 100}%` }}
                             ></div>
                           </div>
                         </div>
@@ -2512,7 +2512,7 @@ function DashboardContent() {
                           </tr>
                         </thead>
                         <tbody>
-                          {statsData.topPhoneNumbers.map((phoneData: any, index: number) => (
+                          {(statsData.topPhoneNumbers || []).map((phoneData: any, index: number) => (
                             <tr key={index} className="border-b border-tech-border">
                               <td className="px-4 py-3">{phoneData.phoneNumber}</td>
                               <td className="px-4 py-3">{phoneData.totalMessages}</td>
@@ -2545,7 +2545,7 @@ function DashboardContent() {
                           </tr>
                         </thead>
                         <tbody>
-                          {statsData.recentMessages.map((message: any, index: number) => (
+                          {(statsData.recentMessages || []).map((message: any, index: number) => (
                             <tr key={index} className="border-b border-tech-border">
                               <td className="px-4 py-3 text-sm">{message.to}</td>
                               <td className="px-4 py-3 text-sm">{message.from}</td>

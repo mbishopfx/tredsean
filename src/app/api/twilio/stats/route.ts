@@ -338,8 +338,8 @@ export async function GET(request: NextRequest) {
         currency: 'USD',
         activeConversations: phoneStats.filter(p => p.isActiveConversation).length
       },
-      statusBreakdown: statusCounts,
-      hourlyBreakdown: timeBreakdown,
+      statusBreakdown: statusCounts || {},
+      hourlyBreakdown: timeBreakdown || {},
       phoneStats: phoneStats.map(stats => ({
         phoneNumber: stats.phoneNumber,
         totalMessages: stats.totalMessages,
@@ -353,8 +353,16 @@ export async function GET(request: NextRequest) {
         cost: parseFloat(stats.cost.toFixed(2)),
         lastActivity: stats.lastMessageDate?.toISOString(),
         isActive: stats.isActiveConversation
-      })),
-      campaignAnalysis: campaignData,
+      })) || [],
+      topPhoneNumbers: phoneStats.slice(0, 10).map(stats => ({
+        phoneNumber: stats.phoneNumber,
+        totalMessages: stats.totalMessages,
+        delivered: stats.delivered,
+        failed: stats.failed,
+        deliveryRate: stats.deliveryRate,
+        cost: parseFloat(stats.cost.toFixed(2))
+      })) || [],
+      campaignAnalysis: campaignData || [],
       recentMessages: messages
         .sort((a, b) => {
           const dateA = a.dateSent || a.dateCreated || new Date(0);
@@ -375,12 +383,12 @@ export async function GET(request: NextRequest) {
           errorCode: message.errorCode,
           errorMessage: message.errorMessage,
           segments: message.numSegments?.toString() || null
-        })),
+        })) || [],
       performance: {
         avgDeliveryTime: '2.3 seconds', // This would be calculated from actual delivery data
-        peakHour: Object.entries(hourlyBreakdown).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A',
-        totalCampaigns: campaignData.length,
-        activeCampaigns: campaignData.filter(c => c.status === 'active').length
+        peakHour: Object.entries(hourlyBreakdown || {}).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A',
+        totalCampaigns: (campaignData || []).length,
+        activeCampaigns: (campaignData || []).filter(c => c.status === 'active').length
       }
     };
 
