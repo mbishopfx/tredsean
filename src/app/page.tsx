@@ -49,6 +49,12 @@ const ReportsIcon = () => (
   </svg>
 );
 
+const DripCampaignIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z M7 12l3 3L18 7"></path>
+  </svg>
+);
+
 // Dashboard component
 export default function Dashboard() {
   const router = useRouter();
@@ -132,6 +138,28 @@ export default function Dashboard() {
     email?: string,
     [key: string]: any
   }>>([]);
+
+  // Drip Campaign state
+  const [dripCampaigns, setDripCampaigns] = useState<any[]>([]);
+  const [loadingDripCampaigns, setLoadingDripCampaigns] = useState(false);
+  const [selectedDripCampaign, setSelectedDripCampaign] = useState<string | null>(null);
+  const [dripCampaignForm, setDripCampaignForm] = useState({
+    name: '',
+    messageTemplates: Array(9).fill('').map((_, index) => ({ 
+      day: [1, 3, 5, 7, 9, 11, 13, 15, 17][index], 
+      message: '', 
+      active: true 
+    })),
+    contactSource: 'file' as 'crm' | 'file',
+    selectedContacts: [] as any[],
+    variables: ['name', 'company', 'phone', 'email', 'location', 'date', 'time'] as string[]
+  });
+  const [creatingDripCampaign, setCreatingDripCampaign] = useState(false);
+  const [dripCampaignStats, setDripCampaignStats] = useState<any>(null);
+  const [campaignFilter, setCampaignFilter] = useState<'all' | 'active' | 'paused' | 'completed'>('active');
+  const [campaignSearch, setCampaignSearch] = useState('');
+  const [managingCampaign, setManagingCampaign] = useState<string | null>(null);
+  const [campaignSummary, setCampaignSummary] = useState<any>(null);
   
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -959,11 +987,9 @@ export default function Dashboard() {
   const handleSearchCrmContacts = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCrmContactSearch(e.target.value);
     // Debounce search to avoid too many requests
-    const timeoutId = setTimeout(() => {
+    setTimeout(() => {
       fetchCrmContacts(1, e.target.value);
     }, 500);
-    
-    return () => clearTimeout(timeoutId);
   };
   
   // Reset the form when changing contact source
@@ -973,6 +999,253 @@ export default function Dashboard() {
     setFileName('');
     setSelectedCrmContacts([]);
   };
+
+  // Drip Campaign Handlers
+  const fetchDripCampaigns = async (filter = campaignFilter, search = campaignSearch) => {
+    setLoadingDripCampaigns(true);
+    try {
+      const params = new URLSearchParams({
+        status: filter === 'all' ? 'all' : filter,
+        limit: '20',
+        offset: '0'
+      });
+      
+      if (search.trim()) {
+        params.append('search', search.trim());
+      }
+      
+      const response = await fetch(`/api/drip-campaign/list?${params}`);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch drip campaigns');
+      }
+      
+      setDripCampaigns(data.campaigns || []);
+      setCampaignSummary(data.summary || null);
+    } catch (error) {
+      console.error('Error fetching drip campaigns:', error);
+    } finally {
+      setLoadingDripCampaigns(false);
+    }
+  };
+
+  const handleManageCampaign = async (campaignId: string, action: 'pause' | 'resume' | 'delete' | 'duplicate', newName?: string) => {
+    setManagingCampaign(campaignId);
+    try {
+      const response = await fetch('/api/drip-campaign/manage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId, action, newName })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || `Failed to ${action} campaign`);
+      }
+
+      // Refresh campaigns list
+      fetchDripCampaigns();
+      
+      alert(data.message);
+    } catch (error) {
+      console.error(`Error ${action} campaign:`, error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setManagingCampaign(null);
+    }
+  };
+
+  const handleBulkCampaignAction = async (action: 'pause' | 'resume', campaignIds: string[]) => {
+    if (campaignIds.length === 0) {
+      alert('Please select campaigns first');
+      return;
+    }
+
+    const confirmMessage = `Are you sure you want to ${action} ${campaignIds.length} campaign(s)?`;
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      const results = await Promise.all(
+        campaignIds.map(id => 
+          fetch('/api/drip-campaign/manage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ campaignId: id, action })
+          })
+        )
+      );
+
+      const allSuccessful = results.every(r => r.ok);
+      
+      if (allSuccessful) {
+        alert(`Successfully ${action}d ${campaignIds.length} campaign(s)`);
+        fetchDripCampaigns();
+      } else {
+        alert(`Some campaigns failed to ${action}. Please check individual campaigns.`);
+        fetchDripCampaigns();
+      }
+    } catch (error) {
+      console.error(`Error bulk ${action}:`, error);
+      alert(`Error performing bulk ${action}`);
+    }
+  };
+
+  const handleCreateDripCampaign = async () => {
+    if (!dripCampaignForm.name || dripCampaignForm.selectedContacts.length === 0) {
+      alert('Please provide a campaign name and select contacts');
+      return;
+    }
+
+    setCreatingDripCampaign(true);
+    try {
+      const response = await fetch('/api/drip-campaign/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: dripCampaignForm.name,
+          messageTemplates: dripCampaignForm.messageTemplates.filter(t => t.active && t.message.trim()),
+          contacts: dripCampaignForm.selectedContacts,
+          variables: dripCampaignForm.variables
+        })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create drip campaign');
+      }
+
+      // Reset form and refresh campaigns
+      setDripCampaignForm({
+        name: '',
+        messageTemplates: Array(9).fill('').map((_, index) => ({ 
+          day: [1, 3, 5, 7, 9, 11, 13, 15, 17][index], 
+          message: '', 
+          active: true 
+        })),
+        contactSource: 'file',
+        selectedContacts: [],
+        variables: ['name', 'company', 'phone', 'email', 'location', 'date', 'time']
+      });
+      
+      fetchDripCampaigns();
+      alert('Drip campaign created successfully!');
+    } catch (error) {
+      console.error('Error creating drip campaign:', error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setCreatingDripCampaign(false);
+    }
+  };
+
+  const handleDripCampaignContactUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const text = await file.text();
+    const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+    
+    if (lines.length === 0) {
+      alert('The file appears to be empty.');
+      return;
+    }
+
+    // Parse CSV - assuming format: name, company, phone, email, location
+    const contacts = lines.slice(1).map((line, index) => {
+      const [name, company, phone, email, location, ...rest] = line.split(',').map(item => item.trim());
+      
+      if (!phone) {
+        console.warn(`Row ${index + 2}: No phone number found`);
+        return null;
+      }
+
+      return {
+        name: name || `Contact ${index + 1}`,
+        company: company || '',
+        phone: phone,
+        email: email || '',
+        location: location || '',
+        ...Object.fromEntries(rest.map((value, i) => [`custom_${i + 1}`, value]))
+      };
+    }).filter(Boolean);
+
+    setDripCampaignForm(prev => ({
+      ...prev,
+      selectedContacts: contacts
+    }));
+  };
+
+  const handleAddToDripPipeline = async (campaignId: string, contactId: string) => {
+    try {
+      const response = await fetch('/api/drip-campaign/add-to-pipeline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId, contactId })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to add contact to pipeline');
+      }
+
+      alert('Contact successfully added to pipeline!');
+    } catch (error) {
+      console.error('Error adding to pipeline:', error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // Enhanced drip campaign handlers
+  const handleInsertVariableInDripMessage = (templateIndex: number, variable: string) => {
+    const newTemplates = [...dripCampaignForm.messageTemplates];
+    const currentMessage = newTemplates[templateIndex].message;
+    const cursorPosition = 0; // In a real implementation, you'd track cursor position
+    
+    // Insert variable at cursor position or end of message
+    const newMessage = currentMessage + `{${variable}}`;
+    newTemplates[templateIndex].message = newMessage;
+    
+    setDripCampaignForm(prev => ({ ...prev, messageTemplates: newTemplates }));
+  };
+
+  const handleSelectDripCrmContacts = async () => {
+    if (dripCampaignForm.contactSource === 'crm') {
+      // Fetch and allow selection of CRM contacts for drip campaign
+      try {
+        const response = await fetch('/api/closecrm/list-contacts');
+        const data = await response.json();
+        
+        if (response.ok && data.contacts) {
+          // Convert CRM contacts to drip campaign format
+          const formattedContacts = data.contacts.map((contact: any) => ({
+            name: contact.name,
+            company: contact.leadName || '',
+            phone: contact.phones[0]?.formattedNumber || '',
+            email: contact.emails?.[0]?.email || '',
+            location: contact.addresses?.[0]?.address || '',
+            leadId: contact.leadId
+          })).filter((contact: any) => contact.phone); // Only include contacts with phone numbers
+          
+          setDripCampaignForm(prev => ({
+            ...prev,
+            selectedContacts: formattedContacts
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching CRM contacts for drip campaign:', error);
+      }
+    }
+  };
+
+  // Fetch drip campaigns when tab becomes active or filters change
+  useEffect(() => {
+    if (activeTab === 'drip-campaign') {
+      fetchDripCampaigns();
+    }
+  }, [activeTab, campaignFilter, campaignSearch]);
 
   return (
     <div className="flex h-screen bg-tech-background text-tech-foreground">
@@ -1050,6 +1323,17 @@ export default function Dashboard() {
           >
             <AIIcon />
             <span className="ml-3">AI Rebuttals</span>
+          </div>
+          <div 
+            className={`flex items-center px-4 py-3 cursor-pointer ${
+              activeTab === 'drip-campaign' 
+                ? 'bg-gradient text-white' 
+                : 'hover:bg-tech-secondary transition-colors duration-200'
+            }`}
+            onClick={() => setActiveTab('drip-campaign')}
+          >
+            <DripCampaignIcon />
+            <span className="ml-3">Drip Campaign</span>
           </div>
           {/* User activity logs link - for admin users */}
           <Link href="/admin/activity-logs" 
@@ -2329,8 +2613,532 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+
+        {activeTab === 'drip-campaign' && (
+          <div className="p-8">
+            <div className="flex items-center mb-6">
+              <h2 className="text-2xl font-bold">Drip Campaign</h2>
+              <div className="ml-4 px-3 py-1 bg-tech-card text-xs rounded-full text-primary flex items-center">
+                <span className="w-2 h-2 bg-primary rounded-full mr-2 animate-pulse-slow"></span>
+                9-Touch Automation
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              {/* Campaign Creation Form */}
+              <div className="xl:col-span-2 bg-tech-card rounded-lg shadow-tech overflow-hidden">
+                <div className="h-1 bg-gradient"></div>
+                <div className="p-6">
+                  <h3 className="text-lg font-medium mb-4">Create New Campaign</h3>
+                  
+                  {/* Campaign Name */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Campaign Name
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full p-3 bg-tech-input border border-tech-border rounded-md text-tech-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      placeholder="e.g., Real Estate Follow-up Q1 2024"
+                      value={dripCampaignForm.name}
+                      onChange={(e) => setDripCampaignForm(prev => ({ ...prev, name: e.target.value }))}
+                    />
+                  </div>
+
+                  {/* Contact Source Selection */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Contact Source
+                    </label>
+                    <div className="flex bg-tech-secondary bg-opacity-50 rounded-md p-1">
+                      <button
+                        className={`flex-1 py-2 text-center text-sm rounded-md transition-colors duration-200 ${
+                          dripCampaignForm.contactSource === 'file' 
+                            ? 'bg-gradient text-white' 
+                            : 'text-gray-300 hover:bg-tech-secondary'
+                        }`}
+                        onClick={() => setDripCampaignForm(prev => ({ ...prev, contactSource: 'file' }))}
+                      >
+                        Upload CSV File
+                      </button>
+                      <button
+                        className={`flex-1 py-2 text-center text-sm rounded-md transition-colors duration-200 ${
+                          dripCampaignForm.contactSource === 'crm' 
+                            ? 'bg-gradient text-white' 
+                            : 'text-gray-300 hover:bg-tech-secondary'
+                        }`}
+                        onClick={() => setDripCampaignForm(prev => ({ ...prev, contactSource: 'crm' }))}
+                      >
+                        Close CRM Contacts
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Contact Upload/Selection */}
+                  {dripCampaignForm.contactSource === 'file' ? (
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Upload Contacts (CSV)
+                      </label>
+                      <div className="border-2 border-dashed border-tech-border rounded-lg p-4 text-center">
+                        <input
+                          type="file"
+                          accept=".csv"
+                          className="hidden"
+                          id="drip-csv-upload"
+                          onChange={handleDripCampaignContactUpload}
+                        />
+                        <label htmlFor="drip-csv-upload" className="cursor-pointer">
+                          <div className="text-gray-300 mb-2">
+                            <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                          </div>
+                          <div className="text-sm text-gray-300">Click to upload CSV file</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Format: name, company, phone, email, location
+                          </div>
+                        </label>
+                      </div>
+                      
+                      {dripCampaignForm.selectedContacts.length > 0 && (
+                        <div className="mt-3 text-sm text-green-400">
+                          ✓ {dripCampaignForm.selectedContacts.length} contacts loaded
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Select CRM Contacts
+                      </label>
+                      <div className="bg-tech-secondary bg-opacity-20 border border-tech-border rounded-md p-4">
+                        <div className="text-sm text-gray-400 mb-2">
+                          Search and select contacts from your Close CRM
+                        </div>
+                        <input
+                          type="text"
+                          className="w-full p-2 bg-tech-input border border-tech-border rounded-md text-tech-foreground focus:outline-none focus:ring-1 focus:ring-primary text-sm"
+                          placeholder="Search contacts..."
+                          // Add CRM search functionality here
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Available Variables */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Available Variables
+                    </label>
+                    <div className="bg-tech-secondary bg-opacity-30 p-3 rounded-md">
+                      <div className="flex flex-wrap gap-2">
+                        {dripCampaignForm.variables.map((variable) => (
+                          <span 
+                            key={variable}
+                            className="bg-tech-input border border-tech-border rounded-md px-2 py-1 text-xs text-gray-300"
+                          >
+                            {`{${variable}}`}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-2">
+                        Click any variable above to use in your messages
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Message Templates */}
+                  <div className="mb-6">
+                    <h4 className="text-md font-medium text-gray-300 mb-3">Message Templates (9-Touch Sequence)</h4>
+                    <div className="space-y-4">
+                      {dripCampaignForm.messageTemplates.map((template, index) => (
+                        <div key={index} className="border border-tech-border rounded-md p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center">
+                              <span className="text-sm font-medium text-primary">
+                                Day {template.day} Message
+                              </span>
+                              <div className="ml-2 text-xs text-gray-400">
+                                ({index === 0 ? 'Initial' : 'Follow-up'})
+                              </div>
+                            </div>
+                            <label className="flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={template.active}
+                                onChange={(e) => {
+                                  const newTemplates = [...dripCampaignForm.messageTemplates];
+                                  newTemplates[index].active = e.target.checked;
+                                  setDripCampaignForm(prev => ({ ...prev, messageTemplates: newTemplates }));
+                                }}
+                                className="mr-2"
+                              />
+                              <span className="text-xs text-gray-400">Active</span>
+                            </label>
+                          </div>
+                          <textarea
+                            className="w-full h-24 bg-tech-input border border-tech-border rounded-md p-3 text-tech-foreground focus:outline-none focus:ring-1 focus:ring-primary text-sm"
+                            placeholder={`Enter your message for day ${template.day}... Use {name}, {company}, etc. for personalization.`}
+                            value={template.message}
+                            onChange={(e) => {
+                              const newTemplates = [...dripCampaignForm.messageTemplates];
+                              newTemplates[index].message = e.target.value;
+                              setDripCampaignForm(prev => ({ ...prev, messageTemplates: newTemplates }));
+                            }}
+                            disabled={!template.active}
+                          />
+                          <div className="text-xs text-gray-400 mt-1">
+                            {template.message.length} / 1600 characters
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Create Campaign Button */}
+                  <button
+                    onClick={handleCreateDripCampaign}
+                    disabled={creatingDripCampaign}
+                    className={`w-full py-3 px-4 rounded-md flex items-center justify-center ${
+                      creatingDripCampaign
+                        ? 'bg-tech-secondary cursor-not-allowed'
+                        : 'bg-gradient hover:shadow-primary'
+                    } transition-shadow duration-300 text-white`}
+                  >
+                    {creatingDripCampaign ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Creating Campaign...
+                      </>
+                    ) : (
+                      <>
+                        <DripCampaignIcon />
+                        <span className="ml-2">Create Drip Campaign</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Campaign List and Stats */}
+              <div className="xl:col-span-1 space-y-6">
+                {/* Campaign Summary */}
+                {campaignSummary && (
+                  <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+                    <div className="h-1 bg-gradient"></div>
+                    <div className="p-6">
+                      <h4 className="text-md font-medium text-gray-300 mb-4">Campaign Overview</h4>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-primary">{campaignSummary.activeCampaigns}</div>
+                          <div className="text-gray-400">Active</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-accent">{campaignSummary.totalCampaigns}</div>
+                          <div className="text-gray-400">Total</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-tech-foreground">{campaignSummary.totalContacts}</div>
+                          <div className="text-gray-400">Contacts</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-status-success">{campaignSummary.overallReplyRate}%</div>
+                          <div className="text-gray-400">Reply Rate</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Campaign Filters and Search */}
+                <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+                  <div className="h-1 bg-gradient-accent"></div>
+                  <div className="p-6">
+                    <h4 className="text-md font-medium text-gray-300 mb-4">Campaign Management</h4>
+                    
+                    {/* Status Filter */}
+                    <div className="mb-4">
+                      <div className="flex bg-tech-secondary bg-opacity-50 rounded-md p-1 text-xs">
+                        {(['all', 'active', 'paused', 'completed'] as const).map((status) => (
+                          <button
+                            key={status}
+                            className={`flex-1 py-1.5 text-center rounded-md transition-colors duration-200 capitalize ${
+                              campaignFilter === status 
+                                ? 'bg-gradient text-white' 
+                                : 'text-gray-300 hover:bg-tech-secondary'
+                            }`}
+                            onClick={() => setCampaignFilter(status)}
+                          >
+                            {status}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Search */}
+                    <div className="mb-4">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Search campaigns..."
+                          className="w-full pl-8 pr-3 py-2 bg-tech-input border border-tech-border rounded-md text-tech-foreground focus:outline-none focus:ring-1 focus:ring-primary text-sm"
+                          value={campaignSearch}
+                          onChange={(e) => setCampaignSearch(e.target.value)}
+                        />
+                        <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                          <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bulk Actions */}
+                    <div className="flex space-x-2">
+                      <button 
+                        className="flex-1 py-2 px-2 bg-tech-secondary hover:bg-tech-border rounded-md text-xs text-gray-300 transition-colors duration-200"
+                        onClick={() => {
+                          const activeCampaigns = dripCampaigns.filter(c => c.status === 'active').map(c => c.id);
+                          handleBulkCampaignAction('pause', activeCampaigns);
+                        }}
+                      >
+                        ⏸️ Pause All
+                      </button>
+                      <button 
+                        className="flex-1 py-2 px-2 bg-tech-secondary hover:bg-tech-border rounded-md text-xs text-gray-300 transition-colors duration-200"
+                        onClick={() => {
+                          const pausedCampaigns = dripCampaigns.filter(c => c.status === 'paused').map(c => c.id);
+                          handleBulkCampaignAction('resume', pausedCampaigns);
+                        }}
+                      >
+                        ▶️ Resume All
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Active Campaigns */}
+                <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+                  <div className="h-1 bg-gradient-accent"></div>
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-md font-medium text-gray-300">
+                        {campaignFilter === 'all' ? 'All Campaigns' : 
+                         campaignFilter === 'active' ? 'Active Campaigns' :
+                         campaignFilter === 'paused' ? 'Paused Campaigns' :
+                         'Completed Campaigns'} ({dripCampaigns.length})
+                      </h4>
+                      {loadingDripCampaigns && (
+                        <svg className="animate-spin h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      )}
+                    </div>
+                    
+                    {dripCampaigns.length > 0 ? (
+                      <div className="space-y-3 max-h-96 overflow-y-auto scrollbar-thin">
+                        {dripCampaigns.map((campaign) => (
+                          <div 
+                            key={campaign.id} 
+                            className={`p-3 rounded-md border cursor-pointer transition-colors duration-200 ${
+                              selectedDripCampaign === campaign.id 
+                                ? 'border-primary bg-primary bg-opacity-10' 
+                                : 'border-tech-border hover:border-tech-secondary'
+                            }`}
+                            onClick={() => setSelectedDripCampaign(campaign.id)}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="font-medium text-sm text-tech-foreground truncate">
+                                {campaign.name}
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <div className={`px-2 py-1 rounded-full text-xs ${
+                                  campaign.status === 'active' ? 'bg-status-success bg-opacity-20 text-status-success' : 
+                                  campaign.status === 'paused' ? 'bg-status-warning bg-opacity-20 text-status-warning' : 
+                                  campaign.status === 'completed' ? 'bg-primary bg-opacity-20 text-primary' :
+                                  'bg-tech-secondary text-gray-400'
+                                }`}>
+                                  {campaign.status}
+                                </div>
+                                
+                                {/* Campaign Actions Dropdown */}
+                                <div className="relative">
+                                  <button 
+                                    className="p-1 hover:bg-tech-secondary rounded"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      // Toggle dropdown - simple implementation
+                                      const dropdown = e.currentTarget.nextElementSibling as HTMLElement;
+                                      if (dropdown) {
+                                        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+                                      }
+                                    }}
+                                  >
+                                    <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                    </svg>
+                                  </button>
+                                  <div 
+                                    className="absolute right-0 mt-1 bg-tech-card border border-tech-border rounded-md shadow-lg z-10 min-w-32"
+                                    style={{ display: 'none' }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {campaign.status === 'active' && (
+                                      <button 
+                                        className="block w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-tech-secondary"
+                                        onClick={() => handleManageCampaign(campaign.id, 'pause')}
+                                        disabled={managingCampaign === campaign.id}
+                                      >
+                                        ⏸️ Pause
+                                      </button>
+                                    )}
+                                    {campaign.status === 'paused' && (
+                                      <button 
+                                        className="block w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-tech-secondary"
+                                        onClick={() => handleManageCampaign(campaign.id, 'resume')}
+                                        disabled={managingCampaign === campaign.id}
+                                      >
+                                        ▶️ Resume
+                                      </button>
+                                    )}
+                                    <button 
+                                      className="block w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-tech-secondary"
+                                      onClick={() => {
+                                        const newName = prompt('Enter name for duplicated campaign:', `Copy of ${campaign.name}`);
+                                        if (newName) handleManageCampaign(campaign.id, 'duplicate', newName);
+                                      }}
+                                      disabled={managingCampaign === campaign.id}
+                                    >
+                                      📋 Duplicate
+                                    </button>
+                                    <button 
+                                      className="block w-full text-left px-3 py-2 text-sm text-status-danger hover:bg-tech-secondary"
+                                      onClick={() => {
+                                        if (confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
+                                          handleManageCampaign(campaign.id, 'delete');
+                                        }
+                                      }}
+                                      disabled={managingCampaign === campaign.id}
+                                    >
+                                      🗑️ Delete
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-xs text-gray-400 space-y-1">
+                              <div className="flex justify-between">
+                                <span>Contacts: {campaign.totalContacts || 0}</span>
+                                <span>Sent: {campaign.sentMessages || 0}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Replied: {campaign.replies || 0}</span>
+                                <span>Progress: {campaign.completionRate || 0}%</span>
+                              </div>
+                              {campaign.nextScheduledMessage && (
+                                <div className="text-primary text-xs">
+                                  Next: {new Date(campaign.nextScheduledMessage).toLocaleDateString()}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center text-gray-400 text-sm">
+                        {loadingDripCampaigns ? 'Loading campaigns...' : 
+                         campaignSearch ? 'No campaigns match your search' :
+                         campaignFilter === 'active' ? 'No active campaigns' :
+                         campaignFilter === 'paused' ? 'No paused campaigns' :
+                         campaignFilter === 'completed' ? 'No completed campaigns' :
+                         'No campaigns yet'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Campaign Stats */}
+                {selectedDripCampaign && (
+                  <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+                    <div className="h-1 bg-gradient"></div>
+                    <div className="p-6">
+                      <h4 className="text-md font-medium text-gray-300 mb-4">Campaign Details</h4>
+                      
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-400">Total Contacts:</span>
+                          <span className="text-sm font-medium">156</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-400">Messages Sent:</span>
+                          <span className="text-sm font-medium">342</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-400">Delivery Rate:</span>
+                          <span className="text-sm font-medium text-status-success">98.2%</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-400">Reply Rate:</span>
+                          <span className="text-sm font-medium text-accent">12.3%</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-gray-400">Pipeline Adds:</span>
+                          <span className="text-sm font-medium text-primary">8</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 pt-4 border-t border-tech-border">
+                        <button 
+                          className="w-full py-2 px-3 bg-tech-secondary hover:bg-tech-border rounded-md text-sm text-gray-300 transition-colors duration-200"
+                          onClick={() => {
+                            // Add functionality to view campaign details
+                          }}
+                        >
+                          View Full Details
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Quick Actions */}
+                <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+                  <div className="h-1 bg-gradient-accent"></div>
+                  <div className="p-6">
+                    <h4 className="text-md font-medium text-gray-300 mb-4">Quick Actions</h4>
+                    
+                    <div className="space-y-2">
+                      <button className="w-full py-2 px-3 bg-tech-secondary hover:bg-tech-border rounded-md text-sm text-gray-300 transition-colors duration-200 text-left">
+                        📊 View All Campaign Stats
+                      </button>
+                      <button className="w-full py-2 px-3 bg-tech-secondary hover:bg-tech-border rounded-md text-sm text-gray-300 transition-colors duration-200 text-left">
+                        📋 Export Contact Replies
+                      </button>
+                      <button className="w-full py-2 px-3 bg-tech-secondary hover:bg-tech-border rounded-md text-sm text-gray-300 transition-colors duration-200 text-left">
+                        🎯 Add Responders to Pipeline
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Information about drip campaigns */}
+            <div className="mt-6 bg-tech-secondary bg-opacity-20 border border-tech-border rounded-lg p-4 text-sm text-gray-400">
+              <p>
+                <span className="font-medium text-primary">Drip Campaign Info:</span> The 9-touch sequence sends messages on days 1, 3, 5, 7, 9, 11, 13, 15, and 17. 
+                The system automatically tracks replies and removes responders from subsequent messages. 
+                Non-responders can be easily added to your pipeline for direct follow-up.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
