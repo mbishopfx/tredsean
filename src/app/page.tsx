@@ -2,7 +2,6 @@
 
 import { useState, useRef, ChangeEvent, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 import { useActivityLogger } from './hooks/useActivityLogger';
 
@@ -57,7 +56,6 @@ const DripCampaignIcon = () => (
 
 // Dashboard component
 export default function Dashboard() {
-  const router = useRouter();
   const { logActivity } = useActivityLogger();
   
   // Authentication state
@@ -189,34 +187,18 @@ export default function Dashboard() {
   };
   // Check if user is authenticated
   useEffect(() => {
-    // Need to make sure we only run this on the client
+    // Prevent hydration mismatch by only running auth check on client
     const checkAuth = () => {
       try {
         // UNPROTECTED: Auto-authenticate for deployment
-        // Check localStorage for auth
-        // const auth = localStorage.getItem('isAuthenticated');
-        // console.log('Authentication check:', !!auth);
-        
-        // Auto-set as authenticated for deployment
+        // Only set authenticated state after client-side mount to prevent hydration mismatch
         setIsAuthenticated(true);
         setLoading(false);
         
-        // COMMENTED OUT: Remove login redirect for unprotected deployment
-        // if (!auth) {
-        //   console.log('Not authenticated, redirecting to login');
-        //   window.location.href = '/login';
-        // } else {
-        //   // Log user session activity
-        //   const username = localStorage.getItem('username') || 'unknown';
-        //   logActivity('page_view', { page: 'dashboard' });
-        // }
-        
-        // Set default username for activity logging
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('isAuthenticated', 'true');
-          localStorage.setItem('username', 'demo-user');
-          logActivity('page_view', { page: 'dashboard' });
-        }
+        // Set default username for activity logging (client-side only)
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('username', 'demo-user');
+        logActivity('page_view', { page: 'dashboard' });
       } catch (error) {
         // This will catch any errors if localStorage isn't available yet
         console.error('Auth check error:', error);
@@ -226,10 +208,8 @@ export default function Dashboard() {
       }
     };
     
-    // Only run this on the client, not during SSR
-    if (typeof window !== 'undefined') {
-      checkAuth();
-    }
+    // Only run this on the client, after mount to prevent hydration issues
+    checkAuth();
   }, [logActivity]);
   
   // Get available audio devices - must be in consistent hook order
@@ -423,13 +403,25 @@ export default function Dashboard() {
     }
   };
   
-  // Show loading state
+  // Show loading state or prevent hydration mismatch
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-tech-background">
         <div className="text-center">
           <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
           <h2 className="text-xl font-semibold text-tech-foreground">Loading...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  // Prevent hydration mismatch - don't render main content until client-side
+  if (!isAuthenticated) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-tech-background">
+        <div className="text-center">
+          <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-tech-foreground">Initializing...</h2>
         </div>
       </div>
     );
