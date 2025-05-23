@@ -1370,7 +1370,7 @@ function DashboardContent() {
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto bg-tech-background">
-        {activeTab === 'message-editor' && (
+        <div className={activeTab === 'message-editor' ? 'block' : 'hidden'}>
           <div className="p-8">
             <div className="flex items-center mb-6">
               <h2 className="text-2xl font-bold">Message Editor</h2>
@@ -1683,9 +1683,9 @@ function DashboardContent() {
               </div>
             </div>
           </div>
-        )}
+        </div>
 
-        {activeTab === 'sms-chats' && (
+        <div className={activeTab === 'sms-chats' ? 'block' : 'hidden'}>
           <div className="p-8">
             <div className="flex items-center mb-6">
               <h2 className="text-2xl font-bold">SMS Conversations</h2>
@@ -1972,9 +1972,9 @@ function DashboardContent() {
               </div>
             </div>
           </div>
-        )}
+        </div>
 
-        {activeTab === 'voice-dialer' && (
+        <div className={activeTab === 'voice-dialer' ? 'block' : 'hidden'}>
           <div className="p-8">
             <div className="flex items-center mb-6">
               <h2 className="text-2xl font-bold">Voice Dialer</h2>
@@ -2258,9 +2258,9 @@ function DashboardContent() {
               </div>
             )}
           </div>
-        )}
+        </div>
 
-        {activeTab === 'stats' && (
+        <div className={activeTab === 'stats' ? 'block' : 'hidden'}>
           <div className="p-8">
             <div className="flex items-center mb-6">
               <h2 className="text-2xl font-bold">Campaign Stats</h2>
@@ -2470,9 +2470,9 @@ function DashboardContent() {
               </div>
             )}
           </div>
-        )}
+        </div>
 
-        {activeTab === 'ai-rebuttal' && (
+        <div className={activeTab === 'ai-rebuttal' ? 'block' : 'hidden'}>
           <div className="p-8">
             <div className="flex items-center mb-6">
               <h2 className="text-2xl font-bold">AI Rebuttal Generator</h2>
@@ -2629,9 +2629,9 @@ function DashboardContent() {
               </p>
             </div>
           </div>
-        )}
+        </div>
 
-        {activeTab === 'drip-campaign' && (
+        <div className={activeTab === 'drip-campaign' ? 'block' : 'hidden'}>
           <div className="p-8">
             <div className="flex items-center mb-6">
               <h2 className="text-2xl font-bold">Drip Campaign</h2>
@@ -3154,7 +3154,7 @@ function DashboardContent() {
               </p>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
