@@ -61,7 +61,6 @@ export default function Dashboard() {
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
   
   // Tab state
   const [activeTab, setActiveTab] = useState('message-editor');
@@ -187,15 +186,8 @@ export default function Dashboard() {
     }
   };
 
-  // First useEffect: Handle mounting state to prevent hydration mismatch
+  // Check if user is authenticated - use a single useEffect for all initialization
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Check if user is authenticated - only after component is mounted
-  useEffect(() => {
-    if (!mounted) return;
-    
     // Prevent hydration mismatch by only running auth check on client after mount
     const checkAuth = () => {
       try {
@@ -205,9 +197,11 @@ export default function Dashboard() {
         setLoading(false);
         
         // Set default username for activity logging (client-side only)
-        localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('username', 'demo-user');
-        logActivity('page_view', { page: 'dashboard' });
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('isAuthenticated', 'true');
+          localStorage.setItem('username', 'demo-user');
+          logActivity('page_view', { page: 'dashboard' });
+        }
       } catch (error) {
         // This will catch any errors if localStorage isn't available yet
         console.error('Auth check error:', error);
@@ -219,7 +213,7 @@ export default function Dashboard() {
     
     // Only run this on the client, after mount to prevent hydration issues
     checkAuth();
-  }, [mounted, logActivity]);
+  }, [logActivity]);
   
   // Get available audio devices - must be in consistent hook order
   useEffect(() => {
@@ -413,7 +407,7 @@ export default function Dashboard() {
   };
   
   // Show loading state or prevent hydration mismatch
-  if (!mounted || loading) {
+  if (!isAuthenticated || loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-tech-background">
         <div className="text-center">
@@ -452,16 +446,18 @@ export default function Dashboard() {
 
   const handleSignOut = () => {
     // Log sign out activity before removing authentication
-    const username = localStorage.getItem('username') || 'demo-user';
+    const username = (typeof window !== 'undefined' ? localStorage.getItem('username') : null) || 'demo-user';
     logActivity('logout');
     
     // UNPROTECTED DEPLOYMENT: Prevent actual logout
     alert('Sign out disabled for demo deployment. Refresh page to continue.');
     
     // COMMENTED OUT: Actual logout functionality
-    // localStorage.removeItem('isAuthenticated');
-    // localStorage.removeItem('username');
-    // window.location.href = '/login';
+    // if (typeof window !== 'undefined') {
+    //   localStorage.removeItem('isAuthenticated');
+    //   localStorage.removeItem('username');
+    //   window.location.href = '/login';
+    // }
   };
 
   // Update handleFileChange to set contact data
