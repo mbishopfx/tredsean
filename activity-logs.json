@@ -1193,5 +1193,15 @@
       "username": "Matttrd",
       "displayName": "Matt"
     }
+  },
+  {
+    "timestamp": "2025-06-09T17:38:23.690Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
   }
 ]

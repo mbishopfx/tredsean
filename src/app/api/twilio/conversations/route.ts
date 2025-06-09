@@ -154,7 +154,11 @@ export async function GET(request: NextRequest) {
         message.from === filterNumber || message.to === filterNumber
       ).map(message => {
         // Check if this is an outbound message (from our Twilio number to the contact)
-        const isOutbound = message.from === twilioPhoneNumber;
+        // Add debug logging to see what's happening  
+        console.log('Debug - twilioPhoneNumber:', twilioPhoneNumber, 'message.from:', message.from);
+        const isOutbound = message.from === twilioPhoneNumber || 
+                          (message.from && twilioPhoneNumber && 
+                           message.from.replace(/\D/g, '') === twilioPhoneNumber.replace(/\D/g, ''));
         
         return {
           sid: message.sid,
@@ -191,7 +195,11 @@ export async function GET(request: NextRequest) {
       const conversation = conversationMap.get(otherParty)!;
       
       // Check if this is an outbound message (from our Twilio number to the contact)
-      const isOutbound = message.from === twilioPhoneNumber;
+      // Add debug logging to see what's happening
+      console.log('Debug - twilioPhoneNumber:', twilioPhoneNumber, 'message.from:', message.from);
+      const isOutbound = message.from === twilioPhoneNumber || 
+                        (message.from && twilioPhoneNumber && 
+                         message.from.replace(/\D/g, '') === twilioPhoneNumber.replace(/\D/g, ''));
       
       conversation.push({
         sid: message.sid,
