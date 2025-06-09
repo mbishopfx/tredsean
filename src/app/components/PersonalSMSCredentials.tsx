@@ -30,7 +30,7 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const username = localStorage.getItem('username');
-      if (username === 'Matttrd') {
+      if (username === 'Matttrd' || username === 'Seantrd') {
         setIsSeanAccount(true);
         setCredentials({
           apiKey: '',

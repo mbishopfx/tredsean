@@ -56,6 +56,19 @@ const TEAM_USERS = {
       cloudPassword: 'mpx-bhqzhm8bvg', // Actual cloud credentials
       endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
     }
+  },
+  'Seantrd': {
+    password: 'Croatia123!',
+    displayName: 'Sean',
+    role: 'admin',
+    personalSMS: {
+      provider: 'smsgateway',
+      email: 'sean@trurankdigital.com', // Keep this for UI display
+      password: 'Croatia5376!', // Keep this for UI display  
+      cloudUsername: 'AUZNLR', // Actual cloud credentials
+      cloudPassword: 'mpx-bhqzhm8bvg', // Actual cloud credentials
+      endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
+    }
   }
 };
 
