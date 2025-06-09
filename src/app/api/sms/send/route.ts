@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { addSMSGatewayMessage } from '@/lib/sms-gateway-storage';
 
 interface SMSCredentials {
   email?: string;
@@ -116,19 +117,14 @@ export async function POST(request: NextRequest) {
                   
                   // Save SMS Gateway message to conversation tracking
                   try {
-                    await fetch('/api/sms-gateway/conversations', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        phoneNumber: formattedPhone,
-                        message: message,
-                        direction: 'outbound',
-                        status: 'sent',
-                        endpoint: endpoint,
-                        response: responseData
-                      })
+                    addSMSGatewayMessage({
+                      phoneNumber: formattedPhone,
+                      message: message,
+                      direction: 'outbound',
+                      status: 'sent',
+                      endpoint: endpoint,
+                      response: responseData
                     });
-                    console.log('💾 SMS Gateway message saved to conversations');
                   } catch (saveError) {
                     console.log('⚠️ Failed to save SMS Gateway conversation:', saveError);
                   }

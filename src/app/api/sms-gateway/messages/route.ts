@@ -1,19 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// Import the conversations storage (in production this would be from a database)
-// For now, we'll recreate the import since we can't directly import from the other route
-// This is a temporary solution - in production you'd use a shared database
-
-let smsGatewayConversations: Array<{
-  id: string;
-  phoneNumber: string;
-  message: string;
-  direction: 'inbound' | 'outbound';
-  status: string;
-  timestamp: string;
-  endpoint?: string;
-  response?: string;
-}> = [];
+import { getSMSGatewayMessages } from '@/lib/sms-gateway-storage';
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,19 +14,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get messages for the specific phone number
-    const messages = smsGatewayConversations
-      .filter(conv => conv.phoneNumber === phoneNumber)
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-      .map(conv => ({
-        sid: conv.id,
-        body: conv.message,
-        from: conv.direction === 'outbound' ? 'SMS Gateway' : conv.phoneNumber,
-        to: conv.direction === 'outbound' ? conv.phoneNumber : 'SMS Gateway',
-        direction: conv.direction,
-        status: conv.status,
-        dateCreated: conv.timestamp,
-        provider: 'sms_gateway'
-      }));
+    const messages = getSMSGatewayMessages(phoneNumber);
 
     return NextResponse.json({
       messages,
@@ -58,26 +32,4 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Export a function to add messages (called from the conversations route)
-export function addSMSGatewayMessage(conversation: {
-  id: string;
-  phoneNumber: string;
-  message: string;
-  direction: 'inbound' | 'outbound';
-  status: string;
-  timestamp: string;
-  endpoint?: string;
-  response?: string;
-}) {
-  smsGatewayConversations.push(conversation);
-  
-  // Keep only last 1000 messages
-  if (smsGatewayConversations.length > 1000) {
-    smsGatewayConversations = smsGatewayConversations.slice(-1000);
-  }
-}
-
-// Export function to get all conversations (for the conversations route)
-export function getSMSGatewayConversations() {
-  return smsGatewayConversations;
-} 
+ 
