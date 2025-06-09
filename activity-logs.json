@@ -1288,5 +1288,110 @@
       "username": "Matttrd",
       "displayName": "Matt"
     }
+  },
+  {
+    "timestamp": "2025-06-09T22:05:56.496Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T22:05:58.686Z",
+    "user": "Matttrd",
+    "action": "logout"
+  },
+  {
+    "timestamp": "2025-06-09T22:06:06.452Z",
+    "user": "Seantrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "admin",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T22:08:32.815Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T22:08:33.226Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T22:08:39.559Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T22:08:39.655Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T22:08:54.394Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T22:08:55.334Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T22:09:05.389Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T22:09:05.797Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
   }
 ]

@@ -408,10 +408,10 @@ function DashboardContent() {
     
     fetchConversations();
     
-    // Set up auto-refresh every 30 seconds while tab is active
+    // Set up auto-refresh every 15 seconds while tab is active
     let intervalId: NodeJS.Timeout;
     if (activeTab === 'sms-chats') {
-      intervalId = setInterval(fetchConversations, 30000);
+      intervalId = setInterval(fetchConversations, 15000);
     }
     
     return () => {
@@ -426,8 +426,8 @@ function DashboardContent() {
     } else {
       setConversations(smsGatewayConversations);
     }
-    // Reset selected conversation when switching tabs
-    setSelectedConversation(null);
+    // Don't reset selected conversation when switching tabs - keep chat open
+    // setSelectedConversation(null);
   }, [smsProviderTab, twilioConversations, smsGatewayConversations]);
   
   // Fetch messages for the selected conversation
@@ -481,7 +481,25 @@ function DashboardContent() {
     }
 
     fetchMessages();
-  }, [selectedConversation, smsProviderTab]);
+    
+    // Set up live polling for messages when a conversation is selected
+    let messagePollingInterval: NodeJS.Timeout;
+    if (selectedConversation && activeTab === 'sms-chats') {
+      // Poll for new messages every 3 seconds when conversation is active
+      messagePollingInterval = setInterval(() => {
+        fetchMessages();
+      }, 3000);
+      
+      console.log(`🔄 Started live polling for conversation: ${selectedConversation}`);
+    }
+    
+    return () => {
+      if (messagePollingInterval) {
+        clearInterval(messagePollingInterval);
+        console.log(`⏹️ Stopped live polling for conversation: ${selectedConversation}`);
+      }
+    };
+  }, [selectedConversation, smsProviderTab, activeTab]);
   
   // Fetch SMS stats when the Stats tab is active
   useEffect(() => {
@@ -1083,17 +1101,46 @@ function DashboardContent() {
       
       setConversationMessages(prev => [...prev, messageToAdd]);
       
-      // Wait a second and refresh conversations to show the sent message
-      setTimeout(() => {
+      // Immediately refresh conversations and messages to show the sent message
+      setTimeout(async () => {
         if (activeTab === 'sms-chats') {
-          fetch('/api/twilio/conversations')
-            .then(res => res.json())
-            .then(data => {
-              if (data.conversations) {
-                setConversations(data.conversations);
-              }
-            })
-            .catch(error => console.error('Error refreshing conversations:', error));
+          try {
+            // Refresh both conversations and current messages
+            const [twilioResponse, smsGatewayResponse] = await Promise.all([
+              fetch('/api/twilio/conversations'),
+              fetch('/api/sms-gateway/conversations')
+            ]);
+            
+            const twilioData = await twilioResponse.json();
+            const smsGatewayData = await smsGatewayResponse.json();
+            
+            // Update conversations
+            const twilioConversations = twilioData.conversations || [];
+            const smsGatewayConversations = smsGatewayData.conversations || [];
+            
+            const markedTwilioConversations = twilioConversations.map((conv: any) => ({
+              ...conv,
+              provider: 'twilio',
+              friendlyName: conv.friendlyName || `Twilio - ${conv.phoneNumber}`
+            }));
+            
+            const markedSmsGatewayConversations = smsGatewayConversations.map((conv: any) => ({
+              ...conv,
+              provider: 'sms_gateway',
+              friendlyName: conv.friendlyName || `SMS Gateway - ${conv.participants[0]?.identity || 'Unknown'}`
+            }));
+            
+            setTwilioConversations(markedTwilioConversations);
+            setSmsGatewayConversations(markedSmsGatewayConversations);
+            
+            // Update current conversations view based on active tab
+            const currentConversations = smsProviderTab === 'twilio' ? markedTwilioConversations : markedSmsGatewayConversations;
+            setConversations(currentConversations);
+            
+            console.log('🔄 Refreshed conversations after sending message');
+          } catch (error) {
+            console.error('Error refreshing conversations:', error);
+          }
         }
       }, 1000);
       
