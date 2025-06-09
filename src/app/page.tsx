@@ -120,6 +120,9 @@ function DashboardContent() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [sendingChatMessage, setSendingChatMessage] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<string>('');
+  const [loadingAiAnalysis, setLoadingAiAnalysis] = useState(false);
+  const [showAiAnalysis, setShowAiAnalysis] = useState(false);
   
   // Add state to track previous total message count for notification
   const [previousTotalMessages, setPreviousTotalMessages] = useState(0);
@@ -1198,6 +1201,52 @@ function DashboardContent() {
     setTimeout(() => {
       fetchCrmContacts(1, e.target.value);
     }, 500);
+  };
+
+  const handleAiAnalysis = async () => {
+    if (!selectedConversation || conversationMessages.length === 0) return;
+    
+    setLoadingAiAnalysis(true);
+    setShowAiAnalysis(true);
+    
+    try {
+      const response = await fetch('/api/ai/analyze-conversation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phoneNumber: selectedConversation,
+          messages: conversationMessages,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to analyze conversation');
+      }
+      
+      setAiAnalysis(data.suggestedResponse);
+      logActivity('ai_analysis_requested', {
+        phoneNumber: selectedConversation,
+        messageCount: conversationMessages.length
+      });
+    } catch (error) {
+      console.error('Error analyzing conversation:', error);
+      setAiAnalysis('Sorry, I couldn\'t analyze this conversation right now. Please try again later.');
+    } finally {
+      setLoadingAiAnalysis(false);
+    }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // You could add a toast notification here
+    } catch (error) {
+      console.error('Failed to copy text:', error);
+    }
   };
   
   // Reset the form when changing contact source
@@ -2390,33 +2439,63 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
                       <div 
                         key={conversation.phoneNumber} 
                         className={`p-4 border-b border-tech-border hover:bg-tech-secondary hover:bg-opacity-50 cursor-pointer transition-colors duration-200 ${selectedConversation === conversation.phoneNumber ? 'bg-tech-secondary bg-opacity-30' : ''}`}
-                        onClick={() => setSelectedConversation(conversation.phoneNumber)}
+                        onClick={() => {
+                          setSelectedConversation(conversation.phoneNumber);
+                          // Mark as read when conversation is opened
+                          if (conversation.unreadCount > 0) {
+                            setConversations(prev => prev.map(conv => 
+                              conv.phoneNumber === conversation.phoneNumber 
+                                ? { ...conv, unreadCount: 0 }
+                                : conv
+                            ));
+                          }
+                        }}
                       >
-                        <div className="flex justify-between">
-                          <div className="font-medium text-tech-foreground flex items-center">
-                            {conversation.phoneNumber}
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex items-center space-x-2 flex-1">
+                            <span className="font-medium text-tech-foreground truncate">
+                              {conversation.phoneNumber}
+                            </span>
+                            
+                            {/* Status Indicators */}
                             {conversation.unreadCount > 0 && (
-                              <span className="ml-2 bg-primary text-white text-xs px-1.5 py-0.5 rounded-full">
-                                {conversation.unreadCount}
+                              <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">
+                                UNREAD
+                              </span>
+                            )}
+                            {conversation.unreadCount === 0 && conversation.lastMessageDirection === 'inbound' && (
+                              <span className="bg-yellow-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">
+                                PENDING
+                              </span>
+                            )}
+                            {conversation.unreadCount === 0 && conversation.lastMessageDirection === 'outbound' && (
+                              <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">
+                                REPLIED
                               </span>
                             )}
                           </div>
-                          <div className="text-xs text-gray-400">
+                          
+                          <div className="text-xs text-gray-400 ml-2">
                             {new Date(conversation.lastMessageDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </div>
                         </div>
+                        
                         <div className="text-sm text-gray-400 truncate mt-1 flex items-center">
                           {conversation.lastMessageDirection === 'inbound' ? (
-                            <svg className="h-3 w-3 mr-1 text-primary transform rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                            </svg>
+                            <span className="font-medium text-blue-400 mr-1">Them: </span>
                           ) : (
-                            <svg className="h-3 w-3 mr-1 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                            </svg>
+                            <span className="font-medium text-orange-400 mr-1">You: </span>
                           )}
                           {conversation.lastMessageText}
                         </div>
+                        
+                        {conversation.unreadCount > 0 && (
+                          <div className="flex justify-end mt-2">
+                            <span className="bg-primary text-white text-xs px-2 py-1 rounded-full font-bold animate-pulse">
+                              {conversation.unreadCount} new
+                            </span>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
@@ -2486,6 +2565,20 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
                           )}
                         </div>
                         <div className="flex space-x-2">
+                          <button
+                            onClick={handleAiAnalysis}
+                            disabled={loadingAiAnalysis || conversationMessages.length === 0}
+                            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-md hover:from-purple-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center space-x-2"
+                          >
+                            <svg className={`w-4 h-4 ${loadingAiAnalysis ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              {loadingAiAnalysis ? (
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              ) : (
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                              )}
+                            </svg>
+                            <span>{loadingAiAnalysis ? 'Analyzing...' : 'AI Analysis'}</span>
+                          </button>
                           <button 
                             className={`p-2 rounded-full transition-colors duration-200 flex items-center ${
                               addingToPipeline 
@@ -2610,6 +2703,67 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
                         </div>
                       )}
                     </div>
+                    
+                    {/* AI Analysis Panel */}
+                    {showAiAnalysis && (
+                      <div className="p-4 border-t border-tech-border bg-gradient-to-r from-purple-50 to-blue-50">
+                        <div className="flex justify-between items-center mb-3">
+                          <h4 className="text-sm font-semibold text-purple-700 flex items-center space-x-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                            </svg>
+                            <span>AI Suggested Response</span>
+                          </h4>
+                          <button
+                            onClick={() => setShowAiAnalysis(false)}
+                            className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                        
+                        {loadingAiAnalysis ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="flex items-center space-x-3">
+                              <svg className="w-5 h-5 animate-spin text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                              <span className="text-purple-600">Analyzing conversation...</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="bg-white rounded-lg p-4 border border-purple-200 shadow-sm">
+                              <p className="text-gray-800 whitespace-pre-wrap">{aiAnalysis}</p>
+                            </div>
+                            
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => copyToClipboard(aiAnalysis)}
+                                className="px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors duration-200 flex items-center space-x-2 text-sm"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                                <span>Copy Response</span>
+                              </button>
+                              
+                              <button
+                                onClick={() => setChatMessage(aiAnalysis)}
+                                className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200 flex items-center space-x-2 text-sm"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                <span>Use Response</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     
                     <div className="bg-tech-card p-4 border-t border-tech-border">
                       <div className="flex items-center">
