@@ -3,7 +3,9 @@ import { useState } from 'react';
 interface PersonalSMSCredentials {
   apiKey: string;
   deviceId: string;
-  provider: 'smsmobile' | 'smsdove';
+  provider: 'smsmobile' | 'smsdove' | 'smsgateway';
+  email?: string;
+  password?: string;
 }
 
 interface PersonalSMSCredentialsProps {
@@ -16,7 +18,9 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
   const [credentials, setCredentials] = useState<PersonalSMSCredentials>({
     apiKey: '',
     deviceId: '',
-    provider: 'smsmobile'
+    provider: 'smsgateway',
+    email: '',
+    password: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -26,11 +30,19 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
     setLoading(true);
     setError('');
 
-    // Validate credentials
-    if (!credentials.apiKey || !credentials.deviceId) {
-      setError('Please fill in all required fields');
-      setLoading(false);
-      return;
+    // Validate credentials based on provider
+    if (credentials.provider === 'smsgateway') {
+      if (!credentials.email || !credentials.password) {
+        setError('Please fill in email and password for SMS Gateway');
+        setLoading(false);
+        return;
+      }
+    } else {
+      if (!credentials.apiKey || !credentials.deviceId) {
+        setError('Please fill in all required fields');
+        setLoading(false);
+        return;
+      }
     }
 
     try {
@@ -38,7 +50,7 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
       // You could add a test endpoint here if needed
       onSave(credentials);
       onClose();
-      setCredentials({ apiKey: '', deviceId: '', provider: 'smsmobile' });
+      setCredentials({ apiKey: '', deviceId: '', provider: 'smsgateway', email: '', password: '' });
     } catch (error) {
       setError('Failed to validate credentials. Please check and try again.');
     } finally {
@@ -73,48 +85,92 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
             <select
               id="provider"
               value={credentials.provider}
-              onChange={(e) => handleInputChange('provider', e.target.value as 'smsmobile' | 'smsdove')}
+              onChange={(e) => handleInputChange('provider', e.target.value as 'smsmobile' | 'smsdove' | 'smsgateway')}
               className="w-full px-3 py-2 bg-tech-secondary border border-tech-border rounded-md text-tech-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             >
+              <option value="smsgateway">SMS Gateway (Recommended)</option>
               <option value="smsmobile">SMSMobileAPI</option>
               <option value="smsdove">SMS Dove</option>
             </select>
           </div>
 
-          <div className="mb-4">
-            <label htmlFor="apiKey" className="block text-sm font-medium text-gray-300 mb-2">
-              API Key
-            </label>
-            <input
-              id="apiKey"
-              type="password"
-              value={credentials.apiKey}
-              onChange={(e) => handleInputChange('apiKey', e.target.value)}
-              className="w-full px-3 py-2 bg-tech-secondary border border-tech-border rounded-md text-tech-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Enter your API key from the app"
-              required
-            />
-          </div>
+          {credentials.provider === 'smsgateway' ? (
+            <>
+              <div className="mb-4">
+                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={credentials.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  className="w-full px-3 py-2 bg-tech-secondary border border-tech-border rounded-md text-tech-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Enter your SMS Gateway email"
+                  required
+                />
+              </div>
 
-          <div className="mb-4">
-            <label htmlFor="deviceId" className="block text-sm font-medium text-gray-300 mb-2">
-              Device ID
-            </label>
-            <input
-              id="deviceId"
-              type="text"
-              value={credentials.deviceId}
-              onChange={(e) => handleInputChange('deviceId', e.target.value)}
-              className="w-full px-3 py-2 bg-tech-secondary border border-tech-border rounded-md text-tech-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Enter your device ID from the app"
-              required
-            />
-          </div>
+              <div className="mb-4">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={credentials.password}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  className="w-full px-3 py-2 bg-tech-secondary border border-tech-border rounded-md text-tech-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Enter your SMS Gateway password"
+                  required
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="mb-4">
+                <label htmlFor="apiKey" className="block text-sm font-medium text-gray-300 mb-2">
+                  API Key
+                </label>
+                <input
+                  id="apiKey"
+                  type="password"
+                  value={credentials.apiKey}
+                  onChange={(e) => handleInputChange('apiKey', e.target.value)}
+                  className="w-full px-3 py-2 bg-tech-secondary border border-tech-border rounded-md text-tech-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Enter your API key from the app"
+                  required
+                />
+              </div>
+
+              <div className="mb-4">
+                <label htmlFor="deviceId" className="block text-sm font-medium text-gray-300 mb-2">
+                  Device ID
+                </label>
+                <input
+                  id="deviceId"
+                  type="text"
+                  value={credentials.deviceId}
+                  onChange={(e) => handleInputChange('deviceId', e.target.value)}
+                  className="w-full px-3 py-2 bg-tech-secondary border border-tech-border rounded-md text-tech-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Enter your device ID from the app"
+                  required
+                />
+              </div>
+            </>
+          )}
 
           <div className="mb-6 p-4 bg-blue-900 bg-opacity-20 border border-blue-500 rounded-md">
             <h3 className="text-blue-400 font-medium mb-2">How to get your credentials:</h3>
             <div className="text-blue-300 text-sm space-y-1">
-              {credentials.provider === 'smsmobile' ? (
+              {credentials.provider === 'smsgateway' ? (
+                <>
+                  <p>• Install SMS Gateway app (APK from GitHub)</p>
+                  <p>• Log in with your Google account</p>
+                  <p>• Use the same email and password you set up</p>
+                  <p>• App will handle the rest automatically</p>
+                </>
+              ) : credentials.provider === 'smsmobile' ? (
                 <>
                   <p>• Download SMSMobileAPI app from Play Store</p>
                   <p>• Create account and log in</p>
@@ -150,7 +206,7 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
             <button
               type="submit"
               className="flex-1 px-4 py-2 bg-gradient text-white rounded-md hover:opacity-90 transition-opacity duration-200"
-              disabled={loading || !credentials.apiKey || !credentials.deviceId}
+              disabled={loading || (credentials.provider === 'smsgateway' ? (!credentials.email || !credentials.password) : (!credentials.apiKey || !credentials.deviceId))}
             >
               {loading ? 'Saving...' : 'Save Credentials'}
             </button>
