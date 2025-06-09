@@ -17,16 +17,23 @@ export interface SMSGatewayMessage {
 
 // Redis storage for production (if KV is available)
 let kv: any = null;
-try {
-  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-    const { createClient } = require('@vercel/kv');
-    kv = createClient({
-      url: process.env.KV_REST_API_URL,
-      token: process.env.KV_REST_API_TOKEN,
+
+// Only try to import KV in production environment
+if (process.env.NODE_ENV === 'production' && process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+  try {
+    // Dynamic import to avoid compilation issues in development
+    import('@vercel/kv').then(({ createClient }) => {
+      kv = createClient({
+        url: process.env.KV_REST_API_URL!,
+        token: process.env.KV_REST_API_TOKEN!,
+      });
+      console.log('📡 Redis client initialized for production');
+    }).catch(() => {
+      console.log('📄 Redis not available, using file storage');
     });
+  } catch (error) {
+    console.log('📄 Redis not available, using file storage');
   }
-} catch (error) {
-  console.log('📄 Redis not available, using memory/file storage');
 }
 
 // File-based storage for development
@@ -44,7 +51,7 @@ async function loadConversations() {
   
   try {
     // Try Redis first (production)
-    if (kv) {
+    if (kv && process.env.NODE_ENV === 'production') {
       console.log('📡 Loading SMS Gateway conversations from Redis...');
       const data = await kv.get(REDIS_KEY);
       if (data && Array.isArray(data)) {
@@ -72,7 +79,7 @@ async function loadConversations() {
 async function saveConversations() {
   try {
     // Save to Redis (production)
-    if (kv) {
+    if (kv && process.env.NODE_ENV === 'production') {
       await kv.set(REDIS_KEY, smsGatewayConversations);
       console.log(`💾 Saved ${smsGatewayConversations.length} SMS Gateway conversations to Redis`);
     } 
