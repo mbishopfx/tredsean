@@ -1,5 +1,5 @@
 // Shared storage for SMS Gateway conversations
-// In production, this would be replaced with a database
+// Uses Redis for production, file for development
 
 import fs from 'fs';
 import path from 'path';
@@ -15,72 +15,134 @@ export interface SMSGatewayMessage {
   response?: string;
 }
 
-// File-based storage for development (replace with database in production)
+// Redis storage for production (if KV is available)
+let kv: any = null;
+try {
+  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    const { createClient } = require('@vercel/kv');
+    kv = createClient({
+      url: process.env.KV_REST_API_URL,
+      token: process.env.KV_REST_API_TOKEN,
+    });
+  }
+} catch (error) {
+  console.log('📄 Redis not available, using memory/file storage');
+}
+
+// File-based storage for development
 const STORAGE_FILE = path.join(process.cwd(), '.sms-gateway-storage.json');
 
 // In-memory cache
 let smsGatewayConversations: SMSGatewayMessage[] = [];
 let isLoaded = false;
 
-function loadConversations() {
+// Storage key for Redis
+const REDIS_KEY = 'sms-gateway-conversations';
+
+async function loadConversations() {
   if (isLoaded) return;
   
   try {
-    if (fs.existsSync(STORAGE_FILE)) {
-      const data = fs.readFileSync(STORAGE_FILE, 'utf8');
-      smsGatewayConversations = JSON.parse(data);
-      console.log(`📂 Loaded ${smsGatewayConversations.length} SMS Gateway conversations from storage`);
+    // Try Redis first (production)
+    if (kv) {
+      console.log('📡 Loading SMS Gateway conversations from Redis...');
+      const data = await kv.get(REDIS_KEY);
+      if (data && Array.isArray(data)) {
+        smsGatewayConversations = data;
+        console.log(`📂 Loaded ${data.length} SMS Gateway conversations from Redis`);
+      }
+    } 
+    // Fallback to file storage (development)
+    else if (fs.existsSync(STORAGE_FILE)) {
+      console.log('📁 Loading SMS Gateway conversations from file...');
+      const data = JSON.parse(fs.readFileSync(STORAGE_FILE, 'utf8'));
+      if (Array.isArray(data)) {
+        smsGatewayConversations = data;
+        console.log(`📂 Loaded ${data.length} SMS Gateway conversations from storage`);
+      }
     }
   } catch (error) {
-    console.log('⚠️ Could not load SMS Gateway storage file, starting fresh');
+    console.error('❌ Error loading SMS Gateway conversations:', error);
     smsGatewayConversations = [];
   }
   
   isLoaded = true;
 }
 
-function saveConversations() {
+async function saveConversations() {
   try {
-    fs.writeFileSync(STORAGE_FILE, JSON.stringify(smsGatewayConversations, null, 2));
+    // Save to Redis (production)
+    if (kv) {
+      await kv.set(REDIS_KEY, smsGatewayConversations);
+      console.log(`💾 Saved ${smsGatewayConversations.length} SMS Gateway conversations to Redis`);
+    } 
+    // Save to file (development)
+    else {
+      fs.writeFileSync(STORAGE_FILE, JSON.stringify(smsGatewayConversations, null, 2));
+      console.log(`💾 Saved ${smsGatewayConversations.length} SMS Gateway conversations to file`);
+    }
   } catch (error) {
-    console.error('❌ Failed to save SMS Gateway conversations to file:', error);
+    console.error('❌ Error saving SMS Gateway conversations:', error);
   }
 }
 
-export function addSMSGatewayMessage(message: Omit<SMSGatewayMessage, 'id' | 'timestamp'>) {
-  loadConversations();
+export async function addSMSGatewayMessage(message: Omit<SMSGatewayMessage, 'id'>) {
+  await loadConversations();
   
-  const conversation: SMSGatewayMessage = {
-    id: `sms_gateway_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    timestamp: new Date().toISOString(),
-    ...message
+  const newMessage: SMSGatewayMessage = {
+    ...message,
+    id: `sms_gateway_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
   };
-
-  smsGatewayConversations.push(conversation);
-
-  // Keep only last 1000 messages to prevent file from getting too large
+  
+  // Add message to array
+  smsGatewayConversations.push(newMessage);
+  
+  // Keep only last 1000 messages
   if (smsGatewayConversations.length > 1000) {
     smsGatewayConversations = smsGatewayConversations.slice(-1000);
   }
   
-  saveConversations();
-
+  await saveConversations();
+  
   console.log('💾 Saved SMS Gateway conversation:', {
-    phoneNumber: message.phoneNumber,
-    direction: message.direction,
-    messagePreview: message.message.substring(0, 50) + '...'
+    phoneNumber: newMessage.phoneNumber,
+    direction: newMessage.direction,
+    messagePreview: newMessage.message.substring(0, 50) + '...'
   });
-
-  return conversation;
 }
 
-export function getSMSGatewayConversations() {
-  loadConversations();
-  return smsGatewayConversations;
+export async function getSMSGatewayConversations() {
+  await loadConversations();
+  
+  // Group by phone number and get the latest message for each
+  const conversationMap = new Map();
+  
+  smsGatewayConversations.forEach(msg => {
+    const existing = conversationMap.get(msg.phoneNumber);
+    if (!existing || new Date(msg.timestamp) > new Date(existing.timestamp)) {
+      conversationMap.set(msg.phoneNumber, msg);
+    }
+  });
+  
+  // Convert to API format
+  return Array.from(conversationMap.values()).map(msg => ({
+    sid: `sms_gateway_${msg.phoneNumber}`,
+    friendlyName: `SMS Gateway - ${msg.phoneNumber}`,
+    participants: [{ identity: msg.phoneNumber }],
+    lastMessage: msg.message,
+    dateUpdated: msg.timestamp,
+    provider: 'sms_gateway',
+    messageCount: smsGatewayConversations.filter(m => m.phoneNumber === msg.phoneNumber).length,
+    phoneNumber: msg.phoneNumber,
+    lastMessageDirection: msg.direction,
+    lastMessageDate: msg.timestamp,
+    lastMessageText: msg.message,
+    unreadCount: 0
+  })).sort((a, b) => new Date(b.dateUpdated).getTime() - new Date(a.dateUpdated).getTime());
 }
 
-export function getSMSGatewayMessages(phoneNumber: string) {
-  loadConversations();
+export async function getSMSGatewayMessages(phoneNumber: string) {
+  await loadConversations();
   
   const filteredMessages = smsGatewayConversations
     .filter(conv => conv.phoneNumber === phoneNumber);

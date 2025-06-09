@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { addSMSGatewayMessage, formatConversationsForAPI } from '@/lib/sms-gateway-storage';
+import { addSMSGatewayMessage, formatConversationsForAPI, getSMSGatewayConversations } from '@/lib/sms-gateway-storage';
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,22 +30,20 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const conversations = formatConversationsForAPI();
-
+    const conversations = await getSMSGatewayConversations();
+    
     return NextResponse.json({
       conversations,
       total: conversations.length
     });
-
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ Error fetching SMS Gateway conversations:', error);
-    return NextResponse.json({
-      conversations: [],
-      total: 0,
-      error: error.message
-    }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch conversations' },
+      { status: 500 }
+    );
   }
 }
 

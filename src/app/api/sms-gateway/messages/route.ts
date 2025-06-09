@@ -7,28 +7,25 @@ export async function GET(request: NextRequest) {
     const phoneNumber = searchParams.get('phoneNumber');
 
     if (!phoneNumber) {
-      return NextResponse.json({
-        success: false,
-        error: 'Phone number is required'
-      }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Phone number is required' },
+        { status: 400 }
+      );
     }
 
-    // Get messages for the specific phone number
-    const messages = getSMSGatewayMessages(phoneNumber);
-
+    const messages = await getSMSGatewayMessages(phoneNumber);
+    
     return NextResponse.json({
       messages,
       total: messages.length,
       phoneNumber
     });
-
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ Error fetching SMS Gateway messages:', error);
-    return NextResponse.json({
-      messages: [],
-      total: 0,
-      error: error.message
-    }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch messages' },
+      { status: 500 }
+    );
   }
 }
 

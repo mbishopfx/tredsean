@@ -22,24 +22,25 @@ export async function POST(request: NextRequest) {
       console.log('🔐 Webhook signature verification available');
     }
 
-    // Handle incoming SMS events
+    // Process incoming SMS messages
     if (data.event === 'sms:received' && data.payload) {
-      const { messageId, message, phoneNumber, receivedAt } = data.payload;
+      const { phoneNumber, message, receivedAt, messageId } = data.payload;
       
       console.log('📱 Processing incoming SMS:', {
         from: phoneNumber,
-        message: message.substring(0, 50) + '...',
+        message: message?.substring(0, 50) + '...',
         receivedAt
       });
 
-      // Save the incoming message to our SMS Gateway storage
-      addSMSGatewayMessage({
-        phoneNumber: phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`,
+      // Save to SMS Gateway conversation storage
+      await addSMSGatewayMessage({
+        phoneNumber: phoneNumber,
         message: message,
         direction: 'inbound',
         status: 'received',
+        timestamp: receivedAt || new Date().toISOString(),
         endpoint: 'webhook',
-        response: JSON.stringify({ messageId, receivedAt })
+        response: `Webhook message ID: ${messageId}`
       });
 
       console.log('✅ Incoming SMS saved to conversation storage');
@@ -58,22 +59,23 @@ export async function POST(request: NextRequest) {
       console.log('❌ SMS failure notification received');
     }
 
-    // Return success response (SMS Gateway expects 2xx status)
-    return NextResponse.json({ success: true, message: 'Webhook processed successfully' });
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Webhook processed successfully' 
+    });
 
-  } catch (error: any) {
-    console.error('❌ SMS Gateway Webhook Error:', error);
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to process webhook'
-    }, { status: 500 });
+  } catch (error) {
+    console.error('❌ SMS Gateway webhook error:', error);
+    return NextResponse.json(
+      { error: 'Webhook processing failed' },
+      { status: 500 }
+    );
   }
 }
 
 export async function GET() {
   return NextResponse.json({ 
-    message: 'SMS Gateway Webhook endpoint is active',
-    events: ['sms:received', 'sms:sent', 'sms:delivered', 'sms:failed'],
-    status: 'ready'
+    status: 'SMS Gateway webhook endpoint active',
+    timestamp: new Date().toISOString()
   });
 } 
