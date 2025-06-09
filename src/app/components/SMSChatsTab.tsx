@@ -255,16 +255,19 @@ export function SMSChatsTab({ isActive, logActivity }: SMSChatsTabProps) {
                 <div className="text-center text-gray-400">Loading messages...</div>
               ) : conversationMessages.length > 0 ? (
                 <div className="space-y-3">
-                  {conversationMessages.map((message, index) => (
+                  {conversationMessages.map((message, index) => {
+                    console.log('SMSChatsTab - Message:', message.sid, 'Direction:', message.direction, 'From:', message.from);
+                    const isOutbound = message.direction === 'outbound' || message.direction === 'outbound-api';
+                    return (
                     <div
                       key={message.sid || index}
-                      className={`flex ${(message.direction === 'outbound' || message.direction === 'outbound-api') ? 'justify-end' : 'justify-start'}`}
+                      className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
                         className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
-                          (message.direction === 'outbound' || message.direction === 'outbound-api')
-                            ? 'bg-primary text-white'
-                            : 'bg-tech-secondary text-tech-foreground'
+                          isOutbound
+                            ? 'bg-orange-500 text-white'
+                            : 'bg-blue-500 text-white'
                         }`}
                       >
                         <p className="text-sm">{message.body}</p>
@@ -273,7 +276,8 @@ export function SMSChatsTab({ isActive, logActivity }: SMSChatsTabProps) {
                         </p>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center text-gray-400 text-sm">
