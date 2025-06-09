@@ -1,0 +1,86 @@
+<MDToolbar@MDTopAppBar>:
+<DrawerClickableItem@MDNavigationDrawerItem>
+    focus_color: "#e7e4c0"
+    unfocus_color: "#f7f4e7"
+    text_color: "#4a4939"
+    icon_color: "#4a4939"
+    ripple_color: "#c5bdd2"
+    selected_color: "#0c6c4d"
+
+
+<DrawerLabelItem@MDNavigationDrawerItem>
+    bg_color: "#f7f4e7"
+    text_color: "#4a4939"
+    icon_color: "#4a4939"
+    _no_ripple_effect: True
+
+<Outbox_Screen>:
+    name: "outbox"
+    
+    MDTextField:
+        id: list_filter
+        hint_text: "Filter"
+        mode: "rectangle"
+        line_color_focus: "#4a4939"
+        hint_text_color_focus: "#4a4939"
+        text_color_focus: "#4a4939"
+        pos_hint: {"center_x":0.25, "center_y":0.85}
+        size_hint_x: .4
+        on_text: root.filter_list(list_filter.text)
+
+    ScrollView:
+        pos_hint: {"center_x":0.25, "center_y":.5}
+        size_hint: .4,.6
+        MDList:
+            id: container
+            
+    
+    MDBoxLayout:
+        id: root_chatroom
+        md_bg_color: "#f7f4e7"
+        orientation:'vertical'
+        pos_hint: {"center_x":0.7, "center_y":.5}
+        size_hint: .4,.7
+        
+        ScrollView:
+            id: msg_scroll_view
+            MDList:
+                spacing: "10dp"
+                padding: "10dp"
+                id:all_msgs
+                
+        MDCard:
+            id:send_card
+            size_hint: None,None
+            size: root_chatroom.size[0], msg_textbox.size[1]
+            pos_hint: {"center_x": .5, "center_y": .5}
+            spacing: dp(2)
+            padding: dp(5)
+
+            ScrollView:        
+                MDTextField:
+                    id:msg_textbox
+                    multiline: True
+                    max_text_length: 320
+                    on_text: root.chat_textbox()
+                
+                
+            MDIconButton:
+                icon:"send"
+                on_release: root.click_send_msg(msg_textbox.text, ser_url.text)
+
+
+    MDTextField:
+        id: ser_url
+        hint_text: "Server URL"
+        mode: "round"
+        line_color_focus: "#4a4939"
+        hint_text_color_focus: "#4a4939"
+        text_color_focus: "#4a4939"
+        pos_hint: {"center_x":0.7, "center_y":0.1}
+        size_hint_x: .4
+        
+    SideNavMenu:
+        #SideNavMenu
+    
+    

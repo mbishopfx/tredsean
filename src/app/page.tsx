@@ -125,6 +125,9 @@ function DashboardContent() {
   const [aiAnalysis, setAiAnalysis] = useState<string>('');
   const [loadingAiAnalysis, setLoadingAiAnalysis] = useState(false);
   const [showAiAnalysis, setShowAiAnalysis] = useState(false);
+  const [smsProviderTab, setSmsProviderTab] = useState<'twilio' | 'sms-gateway'>('twilio');
+  const [twilioConversations, setTwilioConversations] = useState<any[]>([]);
+  const [smsGatewayConversations, setSmsGatewayConversations] = useState<any[]>([]);
   
   // Add state to track previous total message count for notification
   const [previousTotalMessages, setPreviousTotalMessages] = useState(0);
@@ -366,15 +369,18 @@ function DashboardContent() {
           friendlyName: conv.friendlyName || `SMS Gateway - ${conv.participants[0]?.identity || 'Unknown'}`
         }));
         
-        // Combine and sort by last message date
-        const allConversations = [...markedTwilioConversations, ...markedSmsGatewayConversations]
-          .sort((a, b) => new Date(b.dateUpdated || b.lastTimestamp || '').getTime() - new Date(a.dateUpdated || a.lastTimestamp || '').getTime());
+        // Store them separately
+        setTwilioConversations(markedTwilioConversations);
+        setSmsGatewayConversations(markedSmsGatewayConversations);
         
-        setConversations(allConversations);
+        // Set the main conversations based on active tab
+        const currentConversations = smsProviderTab === 'twilio' ? markedTwilioConversations : markedSmsGatewayConversations;
+        setConversations(currentConversations);
         
         console.log(`📞 Loaded ${twilioConversations.length} Twilio + ${smsGatewayConversations.length} SMS Gateway conversations`);
         
         // Check for new messages and play notification sound if needed
+        const allConversations = [...markedTwilioConversations, ...markedSmsGatewayConversations];
         const currentTotalMessages = allConversations.reduce((total: number, conv: any) => {
           // Count inbound messages received in the last hour
           const recentMessages = conv.messages?.filter((m: any) => 
@@ -411,7 +417,18 @@ function DashboardContent() {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [activeTab, previousTotalMessages]);
+  }, [activeTab, previousTotalMessages, smsProviderTab]);
+  
+  // Update conversations when provider tab changes
+  useEffect(() => {
+    if (smsProviderTab === 'twilio') {
+      setConversations(twilioConversations);
+    } else {
+      setConversations(smsGatewayConversations);
+    }
+    // Reset selected conversation when switching tabs
+    setSelectedConversation(null);
+  }, [smsProviderTab, twilioConversations, smsGatewayConversations]);
   
   // Fetch messages for the selected conversation
   useEffect(() => {
@@ -442,14 +459,19 @@ function DashboardContent() {
           setConversationMessages(data.messages || []);
         } else {
           // Fetch Twilio messages
-          const response = await fetch(`/api/twilio/conversations?phoneNumber=${encodeURIComponent(selectedConversation)}`);
-          const data = await response.json();
+                  // Determine which API to use based on the provider tab
+        const apiEndpoint = smsProviderTab === 'twilio' 
+          ? `/api/twilio/conversations?phoneNumber=${encodeURIComponent(selectedConversation)}`
+          : `/api/sms-gateway/messages?phoneNumber=${encodeURIComponent(selectedConversation)}`;
           
-          if (!response.ok) {
-            throw new Error(data.error || 'Failed to fetch Twilio messages');
-          }
-          
-          setConversationMessages(data.messages || []);
+        const response = await fetch(apiEndpoint);
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to fetch messages');
+        }
+        
+        setConversationMessages(data.messages || []);
         }
       } catch (error) {
         console.error('Error fetching messages:', error);
@@ -459,7 +481,7 @@ function DashboardContent() {
     }
 
     fetchMessages();
-  }, [selectedConversation]);
+  }, [selectedConversation, smsProviderTab]);
   
   // Fetch SMS stats when the Stats tab is active
   useEffect(() => {
@@ -2418,55 +2440,34 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
                 <h2 className="text-2xl font-bold">SMS Conversations</h2>
-                <div className="ml-4 px-2 py-1 bg-blue-600 text-white text-xs rounded">
-                  Active Tab: {activeTab}
-                </div>
                 <div className="ml-4 px-3 py-1 bg-tech-card text-xs rounded-full flex items-center">
                   <span className={`w-2 h-2 ${loadingConversations ? 'bg-primary animate-pulse-fast' : 'bg-primary animate-pulse-slow'} rounded-full mr-2`}></span>
                   Live Updates
                 </div>
               </div>
               
-              {/* SMS Provider Selection */}
-              <div className="flex items-center space-x-4">
-                <div className="text-sm text-gray-400">SMS Provider:</div>
-                <div className="flex bg-tech-secondary bg-opacity-50 rounded-md p-1">
-                  <button
-                    onClick={() => setSmsProvider('twilio')}
-                    className={`px-3 py-1 text-sm rounded-md transition-colors duration-200 flex items-center ${
-                      smsProvider === 'twilio' 
-                        ? 'bg-gradient text-white' 
-                        : 'text-gray-300 hover:bg-tech-secondary'
-                    }`}
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
-                    </svg>
-                    Twilio
-                  </button>
-                  <button
-                                         onClick={() => {
-                       setSmsProvider('personal');
-                       setShowPersonalSMSModal(true);
-                     }}
-                    className={`px-3 py-1 text-sm rounded-md transition-colors duration-200 flex items-center ${
-                      smsProvider === 'personal' 
-                        ? 'bg-gradient text-white' 
-                        : 'text-gray-300 hover:bg-tech-secondary'
-                    }`}
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M17 2H7c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H7V6h10v10z"></path>
-                    </svg>
-                    Personal Phone
-                  </button>
-                </div>
-                {smsProvider === 'personal' && personalSMSCredentials && (
-                  <div className="text-xs text-green-400 flex items-center">
-                    <span className="w-2 h-2 bg-green-400 rounded-full mr-1"></span>
-                    ✓ {(personalSMSCredentials.provider === 'smsmobileapi' || personalSMSCredentials.provider === 'smsmobile') ? 'SMSMobileAPI' : 'SMS Dove'}
-                  </div>
-                )}
+              {/* Provider Tabs */}
+              <div className="flex bg-tech-secondary bg-opacity-50 rounded-md p-1">
+                <button
+                  className={`px-4 py-2 text-sm rounded-md transition-colors duration-200 ${
+                    smsProviderTab === 'twilio'
+                      ? 'bg-gradient text-white'
+                      : 'text-gray-300 hover:bg-tech-secondary'
+                  }`}
+                  onClick={() => setSmsProviderTab('twilio')}
+                >
+                  📞 Twilio ({twilioConversations.length})
+                </button>
+                <button
+                  className={`px-4 py-2 text-sm rounded-md transition-colors duration-200 ${
+                    smsProviderTab === 'sms-gateway'
+                      ? 'bg-gradient text-white'
+                      : 'text-gray-300 hover:bg-tech-secondary'
+                  }`}
+                  onClick={() => setSmsProviderTab('sms-gateway')}
+                >
+                  📱 SMS Gateway ({smsGatewayConversations.length})
+                </button>
               </div>
             </div>
             
@@ -2525,6 +2526,15 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
                           <div className="flex items-center space-x-2 flex-1">
                             <span className="font-medium text-tech-foreground truncate">
                               {conversation.phoneNumber}
+                            </span>
+                            
+                            {/* Provider Badge */}
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                              smsProviderTab === 'twilio' 
+                                ? 'bg-blue-100 text-blue-800' 
+                                : 'bg-green-100 text-green-800'
+                            }`}>
+                              {smsProviderTab === 'twilio' ? '📞' : '📱'}
                             </span>
                             
                             {/* Status Indicators */}

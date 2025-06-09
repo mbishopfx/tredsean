@@ -1203,5 +1203,70 @@
       "username": "Matttrd",
       "displayName": "Matt"
     }
+  },
+  {
+    "timestamp": "2025-06-09T21:11:33.744Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T21:11:47.250Z",
+    "user": "Matttrd",
+    "action": "logout"
+  },
+  {
+    "timestamp": "2025-06-09T21:11:55.517Z",
+    "user": "Seantrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "admin",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T21:16:48.058Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T21:30:53.074Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T21:33:43.113Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T21:37:48.579Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
   }
 ]

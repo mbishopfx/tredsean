@@ -1,0 +1,151 @@
+<MDToolbar@MDTopAppBar>:
+<DrawerClickableItem@MDNavigationDrawerItem>
+    focus_color: "#e7e4c0"
+    unfocus_color: "#f7f4e7"
+    text_color: "#4a4939"
+    icon_color: "#4a4939"
+    ripple_color: "#c5bdd2"
+    selected_color: "#0c6c4d"
+
+
+<DrawerLabelItem@MDNavigationDrawerItem>
+    bg_color: "#f7f4e7"
+    text_color: "#4a4939"
+    icon_color: "#4a4939"
+    _no_ripple_effect: True
+
+<SideNavMenu>:
+
+
+    MDTopAppBar:
+        title: app.APP_NAME
+        elevation: 10
+        pos_hint: {"top": 1}
+        md_bg_color: "#e7e4c0"
+        specific_text_color: "#4a4939"
+        #right_action_items: 
+        #    [ ["account", lambda x:app.screen_manager.change_screen("profile")]] 
+        left_action_items:
+            [['menu', lambda x: nav_drawer.set_state("open")]]
+
+
+    MDNavigationDrawer:
+        id: nav_drawer
+        radius: (0, 16, 16, 0) if self.anchor == "left" else (16, 0, 0, 16)
+        md_bg_color: "#f7f4e7"
+
+        MDNavigationDrawerMenu:
+
+            MDNavigationDrawerHeader:
+                id: nav_drawer_header
+                title: "Username"
+                title_color: "#4a4939"
+                text: "username"
+                spacing: "4dp"
+                padding: "12dp", 0, 0, "56dp"
+
+            MDNavigationDrawerLabel:
+                text: app.APP_NAME
+
+            DrawerClickableItem:
+                icon: "message-draw"
+                text: "Dashboard"
+                on_release: app.screen_manager.change_screen("home")
+
+            DrawerClickableItem:
+                icon: "send"
+                text: "Outbox"
+                on_release: app.screen_manager.change_screen("outbox")
+
+            DrawerClickableItem:
+                icon: "message"
+                text: "Inbox"
+                on_release: app.screen_manager.change_screen("inbox")
+    
+            DrawerClickableItem:
+                icon: "file-chart"
+                text: "Report"
+                on_release: app.screen_manager.change_screen("report")
+
+            MDNavigationDrawerDivider:
+
+            
+            DrawerClickableItem:
+                icon: "logout"
+                text: "Logout"
+                on_release: app.screen_manager.change_screen("login")
+            
+    
+<Home_Screen>:
+    name: "home"
+    
+    MDTextField:
+        id: ser_url
+        hint_text: "Server URL"
+        mode: "round"
+        line_color_focus: "#4a4939"
+        hint_text_color_focus: "#4a4939"
+        text_color_focus: "#4a4939"
+        pos_hint: {"center_x":0.6, "center_y":0.82}
+        size_hint_x: .4
+
+    MDTextField:
+        id: filenamefield
+        hint_text: "Filename"
+        mode: "round"
+        line_color_focus: "#4a4939"
+        hint_text_color_focus: "#4a4939"
+        text_color_focus: "#4a4939"
+        pos_hint: {"center_x":0.6, "center_y":0.75}
+        size_hint_x: .4
+    
+    MDRaisedButton:
+        text: "Select File"
+        md_bg_color: "#e7e4c0"
+        text_color: "#4a4939"
+        pos_hint: {"center_x":0.88, "center_y":0.75}
+        size_hint_x: .1
+        on_release: root.file_manager_open()
+    
+    MDTextField:
+        id: msg_field
+        size_hint_x: .5
+        hint_text: "Message"
+        mode: "fill"
+        line_color_focus: "#4a4939"
+        hint_text_color_focus: "#4a4939"
+        text_color_focus: "#4a4939"
+        size_hint: .4,.3
+        multiline: True
+        max_text_length: 320
+        pos_hint: {"center_x":0.6, "center_y":0.55}
+     
+    MDProgressBar:
+        id: progressbar
+        color: "#4a4939"
+        size_hint_x: .4
+        pos_hint: {"center_x": 0.6, "center_y":0.3}
+        value: 50
+
+    MDRaisedButton:
+        text: "Send To All"
+        md_bg_color: "#e7e4c0"
+        text_color: "#4a4939"
+        pos_hint: {"center_x": 0.6, "center_y":0.2}
+        size_hint_x: .3
+        on_release: 
+            root.send_to_all()
+
+    ScrollView:
+        pos_hint: {"center_x":0.15, "center_y":.5}
+        size_hint: .3,.7
+        MDList:
+            id: container
+
+    SideNavMenu:
+        id:sidenavmenu
+            
+    
+    
+    
+    

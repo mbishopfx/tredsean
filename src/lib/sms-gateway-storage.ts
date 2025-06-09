@@ -1,6 +1,9 @@
 // Shared storage for SMS Gateway conversations
 // In production, this would be replaced with a database
 
+import fs from 'fs';
+import path from 'path';
+
 export interface SMSGatewayMessage {
   id: string;
   phoneNumber: string;
@@ -12,10 +15,41 @@ export interface SMSGatewayMessage {
   response?: string;
 }
 
-// In-memory storage (replace with database in production)
+// File-based storage for development (replace with database in production)
+const STORAGE_FILE = path.join(process.cwd(), '.sms-gateway-storage.json');
+
+// In-memory cache
 let smsGatewayConversations: SMSGatewayMessage[] = [];
+let isLoaded = false;
+
+function loadConversations() {
+  if (isLoaded) return;
+  
+  try {
+    if (fs.existsSync(STORAGE_FILE)) {
+      const data = fs.readFileSync(STORAGE_FILE, 'utf8');
+      smsGatewayConversations = JSON.parse(data);
+      console.log(`📂 Loaded ${smsGatewayConversations.length} SMS Gateway conversations from storage`);
+    }
+  } catch (error) {
+    console.log('⚠️ Could not load SMS Gateway storage file, starting fresh');
+    smsGatewayConversations = [];
+  }
+  
+  isLoaded = true;
+}
+
+function saveConversations() {
+  try {
+    fs.writeFileSync(STORAGE_FILE, JSON.stringify(smsGatewayConversations, null, 2));
+  } catch (error) {
+    console.error('❌ Failed to save SMS Gateway conversations to file:', error);
+  }
+}
 
 export function addSMSGatewayMessage(message: Omit<SMSGatewayMessage, 'id' | 'timestamp'>) {
+  loadConversations();
+  
   const conversation: SMSGatewayMessage = {
     id: `sms_gateway_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     timestamp: new Date().toISOString(),
@@ -24,10 +58,12 @@ export function addSMSGatewayMessage(message: Omit<SMSGatewayMessage, 'id' | 'ti
 
   smsGatewayConversations.push(conversation);
 
-  // Keep only last 1000 messages to prevent memory issues
+  // Keep only last 1000 messages to prevent file from getting too large
   if (smsGatewayConversations.length > 1000) {
     smsGatewayConversations = smsGatewayConversations.slice(-1000);
   }
+  
+  saveConversations();
 
   console.log('💾 Saved SMS Gateway conversation:', {
     phoneNumber: message.phoneNumber,
@@ -39,12 +75,17 @@ export function addSMSGatewayMessage(message: Omit<SMSGatewayMessage, 'id' | 'ti
 }
 
 export function getSMSGatewayConversations() {
+  loadConversations();
   return smsGatewayConversations;
 }
 
 export function getSMSGatewayMessages(phoneNumber: string) {
-  return smsGatewayConversations
-    .filter(conv => conv.phoneNumber === phoneNumber)
+  loadConversations();
+  
+  const filteredMessages = smsGatewayConversations
+    .filter(conv => conv.phoneNumber === phoneNumber);
+  
+  return filteredMessages
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     .map(conv => ({
       sid: conv.id,
@@ -59,6 +100,8 @@ export function getSMSGatewayMessages(phoneNumber: string) {
 }
 
 export function formatConversationsForAPI() {
+  loadConversations();
+  
   // Get unique phone numbers and their latest conversations
   const conversationsByPhone = new Map<string, any>();
   
@@ -91,7 +134,12 @@ export function formatConversationsForAPI() {
     lastMessage: conv.lastMessage,
     dateUpdated: conv.lastTimestamp,
     provider: 'sms_gateway',
-    messageCount: conv.messages.length
+    messageCount: conv.messages.length,
+    phoneNumber: conv.phoneNumber,
+    lastMessageDirection: conv.messages[conv.messages.length - 1]?.direction || 'outbound',
+    lastMessageDate: conv.lastTimestamp,
+    lastMessageText: conv.lastMessage,
+    unreadCount: 0 // For now, assume all messages are read
   }));
 
   // Sort by last updated (most recent first)

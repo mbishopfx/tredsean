@@ -1,0 +1,45 @@
+<MDToolbar@MDTopAppBar>:
+<DrawerClickableItem@MDNavigationDrawerItem>
+    focus_color: "#e7e4c0"
+    unfocus_color: "#f7f4e7"
+    text_color: "#4a4939"
+    icon_color: "#4a4939"
+    ripple_color: "#c5bdd2"
+    selected_color: "#0c6c4d"
+
+
+<DrawerLabelItem@MDNavigationDrawerItem>
+    bg_color: "#f7f4e7"
+    text_color: "#4a4939"
+    icon_color: "#4a4939"
+    _no_ripple_effect: True
+
+<Report_Screen>:
+    name: "report"
+    
+
+    MDBoxLayout:
+        id: data_table
+        size_hint: (0.8, 0.8)
+        pos_hint: {"center_x":0.5, "center_y":0.5}
+
+    MDRaisedButton:
+        text: "Reload..."
+        md_bg_color: "#e7e4c0"
+        text_color: "#4a4939"
+        pos_hint: {"center_x":0.2, "center_y":.135}
+        on_release:
+            data_table.clear_widgets()
+            root.load_data_table()
+    MDRaisedButton:
+        text: "Clear"
+        md_bg_color: "#e7e4c0"
+        text_color: "#4a4939"
+        pos_hint: {"center_x":0.3, "center_y":.135}
+        on_release:
+            data_table.clear_widgets()
+            root.clear_report()
+
+    SideNavMenu:
+        #SideNavMenu
+    
