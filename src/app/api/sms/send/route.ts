@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
         
         for (const phoneNumber of phoneNumbers) {
           // Ensure phone number has international format
-          const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+1${phoneNumber}`;
+          const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber.startsWith('1') ? phoneNumber : '1' + phoneNumber}`;
           console.log(`📤 Sending to ${formattedPhone} via SMS Gateway...`);
           
           try {

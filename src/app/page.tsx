@@ -430,6 +430,7 @@ function DashboardContent() {
         if (isGatewayConversation) {
           // Extract phone number from SMS Gateway conversation ID
           const phoneNumber = selectedConversation.replace('sms_gateway_', '');
+          console.log('🔍 Fetching SMS Gateway messages for:', phoneNumber);
           const response = await fetch(`/api/sms-gateway/messages?phoneNumber=${encodeURIComponent(phoneNumber)}`);
           const data = await response.json();
           
@@ -437,6 +438,7 @@ function DashboardContent() {
             throw new Error(data.error || 'Failed to fetch SMS Gateway messages');
           }
           
+          console.log('📱 SMS Gateway messages received:', data);
           setConversationMessages(data.messages || []);
         } else {
           // Fetch Twilio messages
