@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface PersonalSMSCredentials {
   apiKey: string;
@@ -24,6 +24,24 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isSeanAccount, setIsSeanAccount] = useState(false);
+
+  // Check if this is Sean's account and pre-fill credentials
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const username = localStorage.getItem('username');
+      if (username === 'Matttrd') {
+        setIsSeanAccount(true);
+        setCredentials({
+          apiKey: '',
+          deviceId: '',
+          provider: 'smsgateway',
+          email: 'sean@trurankdigital.com',
+          password: 'Croatia5376!'
+        });
+      }
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,20 +91,30 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
         <div className="h-1 bg-gradient rounded-t-lg mb-6"></div>
         
         <h2 className="text-xl font-semibold text-tech-foreground mb-2">Personal SMS Gateway Setup</h2>
-        <p className="text-gray-300 text-sm mb-6">
-          Enter the credentials from your SMS gateway app. You can get these from the app settings on your phone.
-        </p>
+        {isSeanAccount ? (
+          <div className="mb-6 p-4 bg-green-900 bg-opacity-20 border border-green-500 rounded-md">
+            <h3 className="text-green-400 font-medium mb-2">✅ Sean's SMS Gateway - Pre-Configured</h3>
+            <p className="text-green-300 text-sm">
+              Your SMS Gateway is already set up and working! These credentials are hardcoded and connected to your cloud server.
+            </p>
+          </div>
+        ) : (
+          <p className="text-gray-300 text-sm mb-6">
+            Enter the credentials from your SMS gateway app. You can get these from the app settings on your phone.
+          </p>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label htmlFor="provider" className="block text-sm font-medium text-gray-300 mb-2">
-              SMS Gateway Provider
+              SMS Gateway Provider {isSeanAccount && <span className="text-green-400">(Default for Sean)</span>}
             </label>
             <select
               id="provider"
               value={credentials.provider}
               onChange={(e) => handleInputChange('provider', e.target.value as 'smsmobile' | 'smsdove' | 'smsgateway')}
               className="w-full px-3 py-2 bg-tech-secondary border border-tech-border rounded-md text-tech-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              disabled={isSeanAccount}
             >
               <option value="smsgateway">SMS Gateway (Recommended)</option>
               <option value="smsmobile">SMSMobileAPI</option>
@@ -98,7 +126,7 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
             <>
               <div className="mb-4">
                 <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                  Email
+                  Email {isSeanAccount && <span className="text-green-400">(Pre-configured)</span>}
                 </label>
                 <input
                   id="email"
@@ -108,12 +136,14 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
                   className="w-full px-3 py-2 bg-tech-secondary border border-tech-border rounded-md text-tech-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Enter your SMS Gateway email"
                   required
+                  readOnly={isSeanAccount}
+                  disabled={isSeanAccount}
                 />
               </div>
 
               <div className="mb-4">
                 <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-                  Password
+                  Password {isSeanAccount && <span className="text-green-400">(Pre-configured)</span>}
                 </label>
                 <input
                   id="password"
@@ -123,6 +153,8 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
                   className="w-full px-3 py-2 bg-tech-secondary border border-tech-border rounded-md text-tech-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Enter your SMS Gateway password"
                   required
+                  readOnly={isSeanAccount}
+                  disabled={isSeanAccount}
                 />
               </div>
             </>

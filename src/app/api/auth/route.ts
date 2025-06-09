@@ -46,13 +46,15 @@ const TEAM_USERS = {
   },
   'Matttrd': {
     password: 'admin123!',
-    displayName: 'Matt',
+    displayName: 'Matt (Sean)',
     role: 'admin',
     personalSMS: {
-      provider: 'smsgateway', // Changed to SMS Gateway
-      username: 'REPLACE_WITH_USERNAME_FROM_APP', // Replace with username from SMS Gateway app
-      password: 'REPLACE_WITH_PASSWORD_FROM_APP', // Replace with password from SMS Gateway app
-      endpoint: 'https://api.sms-gate.app/3rdparty/v1/message' // Public cloud endpoint
+      provider: 'smsgateway',
+      email: 'sean@trurankdigital.com', // Keep this for UI display
+      password: 'Croatia5376!', // Keep this for UI display  
+      cloudUsername: 'AUZNLR', // Actual cloud credentials
+      cloudPassword: 'mpx-bhqzhm8bvg', // Actual cloud credentials
+      endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
     }
   }
 };
