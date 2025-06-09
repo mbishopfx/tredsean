@@ -266,13 +266,16 @@ export function SMSChatsTab({ isActive, logActivity }: SMSChatsTabProps) {
                       <div
                         className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
                           isOutbound
-                            ? 'bg-orange-500 text-white'
-                            : 'bg-blue-500 text-white'
+                            ? 'bg-red-500 text-white'
+                            : 'bg-green-500 text-white'
                         }`}
                       >
                         <p className="text-sm">{message.body}</p>
                         <p className="text-xs opacity-70 mt-1">
-                          {new Date(message.dateCreated).toLocaleString()}
+                          {new Date(message.dateCreated).toLocaleString()} 
+                          <span className="ml-2 font-bold">
+                            [{isOutbound ? 'OUT' : 'IN'}]
+                          </span>
                         </p>
                       </div>
                     </div>
