@@ -1043,21 +1043,29 @@ function DashboardContent() {
     try {
       let response;
       
-      if (smsProvider === 'personal' && personalSMSCredentials) {
-        // Use Personal SMS
-        response = await fetch('/api/personal-sms/send', {
+      // Extract phone number from selected conversation (remove prefix if present)
+      const phoneNumber = selectedConversation.replace(/^(sms_gateway_|twilio_)/, '');
+      
+      if (smsProviderTab === 'sms-gateway') {
+        // Use SMS Gateway - use the /api/sms/send endpoint with proper credentials
+        response = await fetch('/api/sms/send', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            to: selectedConversation,
+            phoneNumbers: [phoneNumber],
             message: chatMessage,
-            credentials: personalSMSCredentials
+            provider: 'personal',
+            credentials: {
+              provider: 'smsgateway',
+              email: 'sean@trurankdigital.com',
+              password: 'mpx-bhqzhm8bvg'
+            }
           }),
         });
       } else {
-        // Use Twilio SMS (default)
+        // Use Twilio SMS (if endpoint exists)
         response = await fetch('/api/twilio/conversations/send', {
           method: 'POST',
           headers: {
@@ -1065,7 +1073,7 @@ function DashboardContent() {
           },
           body: JSON.stringify({
             messageText: chatMessage,
-            toPhoneNumber: selectedConversation,
+            toPhoneNumber: phoneNumber,
           }),
         });
       }
@@ -1080,23 +1088,23 @@ function DashboardContent() {
       setChatMessage('');
       
       // Add the sent message to the conversation with explicit outbound direction
-      // Handle different response formats from Twilio vs Personal SMS
-      const messageToAdd = smsProvider === 'personal' ? {
-        sid: `personal_${Date.now()}`,
+      // Handle different response formats from SMS Gateway vs Twilio
+      const messageToAdd = smsProviderTab === 'sms-gateway' ? {
+        sid: `smsgateway_${Date.now()}`,
         body: chatMessage,
-        from: 'Personal Phone',
-        to: selectedConversation,
+        from: 'SMS Gateway',
+        to: phoneNumber,
         direction: 'outbound',
-        status: 'sent',
+        status: data.success ? 'sent' : 'failed',
         dateCreated: new Date().toISOString()
       } : {
-        sid: data.sid,
-        body: data.body,
-        from: data.from,
-        to: data.to,
+        sid: data.sid || `twilio_${Date.now()}`,
+        body: data.body || chatMessage,
+        from: data.from || 'Twilio',
+        to: data.to || phoneNumber,
         direction: 'outbound', // Always outbound for messages we send
-        status: data.status,
-        dateCreated: data.dateCreated
+        status: data.status || 'sent',
+        dateCreated: data.dateCreated || new Date().toISOString()
       };
       
       setConversationMessages(prev => [...prev, messageToAdd]);
@@ -1146,10 +1154,10 @@ function DashboardContent() {
       
       // Log chat message activity
       logActivity('send_chat', { 
-        recipient: selectedConversation,
+        recipient: phoneNumber,
         messageLength: chatMessage.length,
-        provider: smsProvider,
-        gateway: smsProvider === 'personal' ? personalSMSCredentials?.provider : 'twilio'
+        provider: smsProviderTab,
+        gateway: smsProviderTab === 'sms-gateway' ? 'smsgateway' : 'twilio'
       });
       
     } catch (error) {
