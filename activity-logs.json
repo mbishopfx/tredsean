@@ -395,5 +395,803 @@
     "details": {
       "page": "dashboard"
     }
+  },
+  {
+    "timestamp": "2025-05-23T22:33:03.260Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-05-23T22:33:03.263Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T04:51:51.853Z",
+    "user": "demo-user",
+    "action": "user_authenticated",
+    "details": {
+      "role": "user"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T04:52:26.700Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T04:52:26.709Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T04:54:31.737Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T04:54:31.752Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:01:27.688Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:03:28.805Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:03:36.594Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:03:36.598Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:04:10.873Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:04:10.877Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:06:10.015Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:06:10.032Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:06:52.165Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:09:18.321Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:09:28.771Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:09:37.564Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:10:06.032Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:12:46.758Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:13:15.482Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:13:15.494Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:13:27.974Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:13:28.018Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:13:33.356Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:16:37.783Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:17:07.268Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:17:07.376Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:18:20.295Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T05:19:05.268Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T06:36:24.862Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "demo-user",
+      "displayName": null
+    }
+  },
+  {
+    "timestamp": "2025-06-09T06:36:26.393Z",
+    "user": "demo-user",
+    "action": "logout"
+  },
+  {
+    "timestamp": "2025-06-09T06:36:59.793Z",
+    "user": "Matttrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "admin",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T06:37:44.404Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T06:40:49.349Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T06:41:15.322Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T06:42:04.893Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T06:42:17.401Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T06:43:29.192Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T06:43:53.630Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T06:52:40.579Z",
+    "user": "Matttrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "admin",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T06:57:13.924Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T06:58:10.367Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T06:59:43.180Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T06:59:53.368Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:00:27.016Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:00:43.028Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:01:17.211Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:01:34.090Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:01:48.200Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:02:00.878Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:16:01.118Z",
+    "user": "Matttrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "admin",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:19:25.635Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:19:34.356Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:19:41.822Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:19:59.802Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:21:19.454Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:22:09.363Z",
+    "user": "Matttrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "admin",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:23:45.059Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "demo-user",
+      "displayName": null
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:23:51.234Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "demo-user",
+      "displayName": null
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:23:51.237Z",
+    "user": "demo-user",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "demo-user",
+      "displayName": null
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:23:53.439Z",
+    "user": "demo-user",
+    "action": "logout"
+  },
+  {
+    "timestamp": "2025-06-09T07:24:01.700Z",
+    "user": "Matttrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "admin",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:24:18.530Z",
+    "user": "Matttrd",
+    "action": "gbp_audit_performed",
+    "details": {
+      "businessName": "Sample Business",
+      "overallScore": 80,
+      "inputType": "url"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:25:22.119Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:25:29.503Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:25:42.606Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:25:57.325Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:26:05.110Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:26:17.325Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:26:44.549Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:26:56.794Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:27:07.531Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:27:18.434Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:27:30.422Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:28:53.982Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:46:34.565Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:51:04.252Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:52:58.201Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T07:55:19.149Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T08:03:50.878Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T08:04:13.367Z",
+    "user": "Matttrd",
+    "action": "gbp_audit_performed",
+    "details": {
+      "businessName": "Jr’s detailing",
+      "overallScore": 42,
+      "inputType": "business_name"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T08:18:48.880Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T08:22:01.184Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T08:22:01.200Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T08:28:22.444Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
   }
 ]

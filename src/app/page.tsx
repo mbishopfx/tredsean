@@ -5,6 +5,12 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 
 import { useActivityLogger } from './hooks/useActivityLogger';
+import { SMSService } from './lib/sms-service';
+import { AuthModal } from './components/AuthModal';
+import { PersonalSMSCredentials } from './components/PersonalSMSCredentials';
+import AccessDenied from '../components/AccessDenied';
+import HomeFeed from '../components/HomeFeed';
+import GBPTool from '../components/GBPTool';
 
 // Create a loading component
 const LoadingScreen = () => (
@@ -65,16 +71,25 @@ const DripCampaignIcon = () => (
   </svg>
 );
 
+const HomeIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+  </svg>
+);
+
 // Dashboard component
 function DashboardContent() {
   const { logActivity } = useActivityLogger();
   
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string>('user');
+  const [showSiteAuth, setShowSiteAuth] = useState(true);
+  const [showTrdAuth, setShowTrdAuth] = useState(false);
+  const [loading, setLoading] = useState(false);
   
   // Tab state
-  const [activeTab, setActiveTab] = useState('message-editor');
+  const [activeTab, setActiveTab] = useState('home');
   
   // Message Editor state
   const [messageText, setMessageText] = useState('');
@@ -82,6 +97,11 @@ function DashboardContent() {
   const [fileName, setFileName] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sendStatus, setSendStatus] = useState<{ success: boolean; message: string } | null>(null);
+  
+  // SMS Provider Selection
+  const [smsProvider, setSmsProvider] = useState<'twilio' | 'personal'>('twilio');
+  const [personalSMSCredentials, setPersonalSMSCredentials] = useState<any>(null);
+  const [showPersonalSMSModal, setShowPersonalSMSModal] = useState(false);
   
   // Add new state for contact source selection and CRM contacts
   const [contactSource, setContactSource] = useState<'crm' | 'file'>('file');
@@ -170,6 +190,23 @@ function DashboardContent() {
   const [managingCampaign, setManagingCampaign] = useState<string | null>(null);
   const [campaignSummary, setCampaignSummary] = useState<any>(null);
   
+  // AI Tools state
+  const [activeAITool, setActiveAITool] = useState<string>('instant-seo-audit');
+  const [aiInput, setAiInput] = useState('');
+  const [aiResponse, setAiResponse] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiHistory, setAiHistory] = useState<Array<{tool: string, input: string, response: string, timestamp: Date}>>([]);
+  
+  // CSV Processing state
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [filterType, setFilterType] = useState<string>('mobile_only');
+  const [campaignName, setCampaignName] = useState<string>('');
+  const [processingStats, setProcessingStats] = useState<any>(null);
+  const [csvOutput, setCsvOutput] = useState<string>('');
+
+  // Access Denied state
+  const [showAccessDenied, setShowAccessDenied] = useState(false);
+
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -214,25 +251,46 @@ function DashboardContent() {
 
   // Check if user is authenticated - use a single useEffect for all initialization
   useEffect(() => {
-    // Prevent hydration mismatch by only running auth check on client after mount
+    // Check if user is already authenticated from localStorage
     const checkAuth = () => {
       try {
-        // UNPROTECTED: Auto-authenticate for deployment
-        // Only set authenticated state after client-side mount to prevent hydration mismatch
-        setIsAuthenticated(true);
-        setLoading(false);
-        
-        // Set default username for activity logging (client-side only)
         if (typeof window !== 'undefined') {
-          localStorage.setItem('isAuthenticated', 'true');
-          localStorage.setItem('username', 'demo-user');
-          logActivity('page_view', { page: 'dashboard' });
+          const savedAuth = localStorage.getItem('isAuthenticated');
+          const savedRole = localStorage.getItem('userRole');
+          const savedUsername = localStorage.getItem('username');
+          const savedDisplayName = localStorage.getItem('displayName');
+          const savedPersonalSMS = localStorage.getItem('personalSMSCredentials');
+          
+          if (savedAuth === 'true' && savedRole && savedUsername) {
+            // User is already authenticated
+            setIsAuthenticated(true);
+            setUserRole(savedRole);
+            setShowSiteAuth(false);
+            
+            // Restore personal SMS credentials if available
+            if (savedPersonalSMS) {
+              try {
+                const credentials = JSON.parse(savedPersonalSMS);
+                setPersonalSMSCredentials(credentials);
+                setSmsProvider('personal');
+              } catch (error) {
+                console.error('Error parsing saved SMS credentials:', error);
+              }
+            }
+            
+            logActivity('page_view', { page: 'dashboard', username: savedUsername, displayName: savedDisplayName });
+          } else {
+            // User needs to authenticate
+            setIsAuthenticated(false);
+            setShowSiteAuth(true);
+          }
         }
+        setLoading(false);
       } catch (error) {
-        // This will catch any errors if localStorage isn't available yet
         console.error('Auth check error:', error);
-        // Still set as authenticated for deployment
-        setIsAuthenticated(true);
+        // If there's an error, show auth modal
+        setIsAuthenticated(false);
+        setShowSiteAuth(true);
         setLoading(false);
       }
     };
@@ -445,13 +503,81 @@ function DashboardContent() {
       setIsGeneratingRebuttal(false);
     }
   };
+
+  // Authentication handlers (defined before use)
+  const handleAuthenticate = (role: string, userInfo?: any) => {
+    const timestamp = new Date().toISOString();
+    const username = userInfo?.username || `user_${timestamp.slice(0, 19).replace(/[T:-]/g, '')}`;
+    const displayName = userInfo?.displayName || username;
+    
+    setIsAuthenticated(true);
+    setUserRole(role);
+    setShowSiteAuth(false);
+    setShowTrdAuth(false);
+    
+    // If user has personal SMS credentials, set them up automatically
+    if (userInfo?.personalSMS) {
+      setPersonalSMSCredentials(userInfo.personalSMS);
+      setSmsProvider('personal'); // Default to personal SMS for team members
+    }
+    
+    localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('userRole', role);
+    localStorage.setItem('username', username);
+    localStorage.setItem('displayName', displayName);
+    
+    if (userInfo?.personalSMS) {
+      localStorage.setItem('personalSMSCredentials', JSON.stringify(userInfo.personalSMS));
+    }
+    
+    logActivity('user_authenticated', { role, username, displayName });
+  };
   
-  // Show loading state or prevent hydration mismatch
-  if (!isAuthenticated || loading) {
+  // Show loading state
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  // Show team authentication modal
+  if (!isAuthenticated && showSiteAuth) {
     return (
-      <LoadingScreen />
+      <>
+        <AuthModal
+          isOpen={showSiteAuth}
+          onClose={() => setShowSiteAuth(false)}
+          onAuthenticate={handleAuthenticate}
+          type="team"
+          title="Team Login Required"
+          description="Please enter your assigned username and password to access the TRD SMS system."
+        />
+        <LoadingScreen />
+      </>
     );
   }
+
+  // // Show TRD authentication modal for Twilio access
+  // if (showTrdAuth) {
+  //   return (
+  //     <>
+  //       <AuthModal
+  //         isOpen={showTrdAuth}
+  //         onClose={() => setShowTrdAuth(false)}
+  //         onAuthenticate={handleAuthenticate}
+  //         type="trd"
+  //         title="TRD Email Password Required"
+  //         description="Please enter your TRD email password to use Twilio SMS."
+  //       />
+  //       <div className="min-h-screen bg-tech-background">
+  //         <div className="max-w-4xl mx-auto p-6">
+  //           <div className="bg-tech-card rounded-lg shadow-tech p-6 text-center">
+  //             <h2 className="text-xl font-semibold text-tech-foreground mb-2">Twilio Access Required</h2>
+  //             <p className="text-gray-300">Please authenticate with your TRD email password to use Twilio SMS.</p>
+  //           </div>
+  //         </div>
+  //       </div>
+  //     </>
+  //   );
+  // }
 
   const callOutcomes = [
     "Answered - Interested",
@@ -472,15 +598,37 @@ function DashboardContent() {
     const username = (typeof window !== 'undefined' ? localStorage.getItem('username') : null) || 'demo-user';
     logActivity('logout');
     
-    // UNPROTECTED DEPLOYMENT: Prevent actual logout
-    alert('Sign out disabled for demo deployment. Refresh page to continue.');
+    // Clear all authentication data
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('username');
     
-    // COMMENTED OUT: Actual logout functionality
-    // if (typeof window !== 'undefined') {
-    //   localStorage.removeItem('isAuthenticated');
-    //   localStorage.removeItem('username');
-    //   window.location.href = '/login';
+    // Reset state
+    setIsAuthenticated(false);
+    setUserRole('user');
+    setShowSiteAuth(true);
+    setActiveTab('message-editor');
+  };
+
+  // Personal SMS credential handlers
+  const handlePersonalSMSCredentials = (credentials: any) => {
+    setPersonalSMSCredentials(credentials);
+    setShowPersonalSMSModal(false);
+  };
+
+  const handleSMSProviderChange = (provider: 'twilio' | 'personal') => {
+    if (provider === 'personal' && !personalSMSCredentials) {
+      setShowPersonalSMSModal(true);
+      return;
+    }
+    
+    // For now, allow Twilio access without TRD password to test the system
+    // You can enable this later: if (provider === 'twilio' && userRole !== 'trd' && userRole !== 'super') {
+    //   setShowTrdAuth(true);
+    //   return;
     // }
+    
+    setSmsProvider(provider);
   };
 
   // Update handleFileChange to set contact data
@@ -669,35 +817,31 @@ function DashboardContent() {
         };
       });
 
-      const response = await fetch('/api/twilio/send-sms', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: messages
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to send messages');
-      }
+      // Use SMS service with provider selection
+      const smsService = new SMSService(personalSMSCredentials);
+      const results = await smsService.sendMessages(
+        messages, 
+        smsProvider === 'personal', 
+        personalSMSCredentials
+      );
 
       // Count successful and failed messages
-      const successful = data.results.filter((r: any) => r.success).length;
-      const failed = data.results.length - successful;
+      const successful = results.filter((r: any) => r.success).length;
+      const failed = results.length - successful;
+      const provider = results[0]?.provider || smsProvider;
 
       setSendStatus({
-        success: true,
-        message: `Successfully sent ${successful} message(s)${failed > 0 ? `, ${failed} failed` : ''}`
+        success: successful > 0,
+        message: `Successfully sent ${successful} message(s), ${failed} failed via ${provider}.`
       });
       
       // Log activity for message sending
       logActivity('send_messages', { 
         recipientCount: messages.length,
-        messageLength: messageText.length
+        messageLength: messageText.length,
+        provider,
+        successful,
+        failed
       });
       
     } catch (error) {
@@ -808,16 +952,34 @@ function DashboardContent() {
     setSendingChatMessage(true);
     
     try {
-      const response = await fetch('/api/twilio/conversations/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messageText: chatMessage,
-          toPhoneNumber: selectedConversation,
-        }),
-      });
+      let response;
+      
+      if (smsProvider === 'personal' && personalSMSCredentials) {
+        // Use Personal SMS
+        response = await fetch('/api/personal-sms/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: selectedConversation,
+            message: chatMessage,
+            credentials: personalSMSCredentials
+          }),
+        });
+      } else {
+        // Use Twilio SMS (default)
+        response = await fetch('/api/twilio/conversations/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messageText: chatMessage,
+            toPhoneNumber: selectedConversation,
+          }),
+        });
+      }
 
       const data = await response.json();
 
@@ -829,19 +991,26 @@ function DashboardContent() {
       setChatMessage('');
       
       // Add the sent message to the conversation with explicit outbound direction
-      // This ensures the UI renders the message properly on the right side with orange color
-      setConversationMessages(prev => [
-        ...prev,
-        {
-          sid: data.sid,
-          body: data.body,
-          from: data.from,
-          to: data.to,
-          direction: 'outbound', // Always outbound for messages we send
-          status: data.status,
-          dateCreated: data.dateCreated
-        }
-      ]);
+      // Handle different response formats from Twilio vs Personal SMS
+      const messageToAdd = smsProvider === 'personal' ? {
+        sid: `personal_${Date.now()}`,
+        body: chatMessage,
+        from: 'Personal Phone',
+        to: selectedConversation,
+        direction: 'outbound',
+        status: 'sent',
+        dateCreated: new Date().toISOString()
+      } : {
+        sid: data.sid,
+        body: data.body,
+        from: data.from,
+        to: data.to,
+        direction: 'outbound', // Always outbound for messages we send
+        status: data.status,
+        dateCreated: data.dateCreated
+      };
+      
+      setConversationMessages(prev => [...prev, messageToAdd]);
       
       // Wait a second and refresh conversations to show the sent message
       setTimeout(() => {
@@ -860,7 +1029,9 @@ function DashboardContent() {
       // Log chat message activity
       logActivity('send_chat', { 
         recipient: selectedConversation,
-        messageLength: chatMessage.length
+        messageLength: chatMessage.length,
+        provider: smsProvider,
+        gateway: smsProvider === 'personal' ? personalSMSCredentials?.provider : 'twilio'
       });
       
     } catch (error) {
@@ -1250,6 +1421,304 @@ function DashboardContent() {
     }
   };
 
+  // AI Tools handler
+  const handleAIToolSubmit = async () => {
+    if (activeAITool === 'instant-seo-audit') {
+      // Handle instant SEO audit
+      if (!aiInput.trim()) {
+        alert('Please enter a website URL, business name, or Google Maps link.');
+        return;
+      }
+
+      setAiLoading(true);
+      setAiResponse('');
+      
+      try {
+        const response = await fetch('/api/seo/instant-audit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input: aiInput.trim() })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Format the comprehensive SEO audit report
+          const auditReport = `🚀 **INSTANT SEO AUDIT REPORT**
+📊 **TRUE RANK DIGITAL - Professional SEO Analysis**
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🏢 **BUSINESS:** ${data.businessName}
+${data.website ? `🌐 **WEBSITE:** ${data.website}` : ''}
+${data.gbpUrl ? `📍 **GOOGLE MAPS:** ${data.gbpUrl}` : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📈 **OVERALL SEO SCORE: ${data.overallScore}/100**
+
+${data.overallScore >= 80 ? '🟢 EXCELLENT' : 
+  data.overallScore >= 60 ? '🟡 GOOD' : 
+  data.overallScore >= 40 ? '🟠 NEEDS IMPROVEMENT' : '🔴 CRITICAL ISSUES'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 **DETAILED SCORES:**
+
+• 📄 On-Page SEO: ${data.scores.onPage}/100 ${data.scores.onPage >= 70 ? '✅' : '❌'}
+• ⚙️ Technical SEO: ${data.scores.technicalSEO}/100 ${data.scores.technicalSEO >= 70 ? '✅' : '❌'}
+• 📍 Local SEO: ${data.scores.localSEO}/100 ${data.scores.localSEO >= 70 ? '✅' : '❌'}
+• 🏢 GBP Optimization: ${data.scores.gbpOptimization}/100 ${data.scores.gbpOptimization >= 70 ? '✅' : '❌'}
+• 📝 Content Quality: ${data.scores.contentQuality}/100 ${data.scores.contentQuality >= 70 ? '✅' : '❌'}
+• 🥊 Competitor Analysis: ${data.scores.competitorAnalysis}/100 ${data.scores.competitorAnalysis >= 70 ? '✅' : '❌'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚨 **CRITICAL ISSUES FOUND:**
+
+${data.insights.map((insight, index) => `
+${index + 1}. **${insight.title}** (${insight.severity.toUpperCase()})
+   📋 ${insight.description}
+   💥 Impact: ${insight.impact}
+   🔧 Fix: ${insight.recommendation}
+`).join('')}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 **ROI OPPORTUNITY ANALYSIS:**
+
+Current Performance: ${data.roi.currentEstimate}
+Potential Growth: ${data.roi.potentialIncrease}
+Monthly Value: ${data.roi.monthlyValue}
+Annual Value: ${data.roi.yearlyValue}
+
+🎯 **GROWTH OPPORTUNITIES:**
+
+${data.opportunities.map((opp, index) => `
+${index + 1}. **${opp.title}** (${opp.difficulty.toUpperCase()})
+   📈 Potential: ${opp.potentialIncrease}
+   ⏱️ Timeline: ${opp.timeframe}
+   📝 ${opp.description}
+`).join('')}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🥊 **COMPETITOR COMPARISON:**
+
+${data.competitorData.map((comp, index) => `
+${index + 1}. **${comp.name}** - Score: ${comp.score}/100
+   Advantages: ${comp.advantages.join(', ')}
+`).join('')}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🗺️ **TRD ACTION PLAN:**
+
+${data.actionPlan.map((phase, index) => `
+**${phase.phase}** (${phase.priority.toUpperCase()} PRIORITY)
+📅 Timeline: ${phase.timeline}
+🎯 ${phase.title}
+
+Tasks:
+${phase.tasks.map(task => `• ${task}`).join('\n')}
+`).join('\n\n')}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📞 **NEXT STEPS WITH TRUE RANK DIGITAL:**
+
+1. 🎯 Schedule strategy call to discuss priority fixes
+2. 📊 Implement Phase 1 optimizations for quick wins  
+3. 🚀 Launch comprehensive SEO campaign
+4. 📈 Track and measure ROI improvements
+
+💡 **This audit reveals significant opportunities to increase your online visibility, generate more leads, and dominate your local market. True Rank Digital specializes in transforming underperforming websites into lead-generation machines.**
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📧 Contact: hello@truerankdigital.com
+📞 Call: Ready to discuss your SEO strategy
+🌐 Web: www.truerankdigital.com
+
+**Report Generated:** ${new Date().toLocaleString()}
+**Powered by:** True Rank Digital AI Audit System`;
+          
+          setAiResponse(auditReport);
+          
+          // Add to history
+          setAiHistory(prev => [{
+            tool: activeAITool,
+            input: aiInput,
+            response: auditReport,
+            timestamp: new Date()
+          }, ...prev.slice(0, 9)]);
+
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to generate SEO audit');
+        }
+      } catch (error) {
+        console.error('Error generating SEO audit:', error);
+        setAiResponse('Error generating SEO audit. Please try again.');
+      } finally {
+        setAiLoading(false);
+      }
+      return;
+    }
+    
+
+    
+    if (activeAITool === 'apollo-csv-processor' || activeAITool === 'campaign-formatter') {
+      // Handle CSV processing tools
+      if (!uploadedFile) {
+        alert('Please upload a CSV file first');
+        return;
+      }
+      
+      setAiLoading(true);
+      setAiResponse('');
+      setProcessingStats(null);
+      setCsvOutput('');
+      
+      try {
+        const formData = new FormData();
+        formData.append('file', uploadedFile);
+        
+        let endpoint = '';
+        if (activeAITool === 'apollo-csv-processor') {
+          formData.append('filterType', filterType);
+          endpoint = '/api/apollo/process-csv';
+        } else {
+          formData.append('campaignName', campaignName || 'Apollo Campaign');
+          endpoint = '/api/apollo/format-campaign';
+        }
+        
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to process CSV');
+        }
+
+        setProcessingStats(data.stats);
+        setCsvOutput(data.csvData);
+        
+        // Format response based on tool type
+        let responseText = '';
+        if (activeAITool === 'apollo-csv-processor') {
+          responseText = `✅ Apollo CSV Successfully Processed!\n\n📊 Processing Results:\n`;
+          responseText += `• Total Input Records: ${data.stats.total_input}\n`;
+          responseText += `• Mobile Numbers Found: ${data.stats.mobile_numbers}\n`;
+          responseText += `• Landlines Filtered: ${data.stats.landlines}\n`;
+          responseText += `• VoIP Numbers: ${data.stats.voip}\n`;
+          responseText += `• Unknown Numbers: ${data.stats.unknown}\n`;
+          responseText += `• Duplicates Removed: ${data.stats.duplicates_removed}\n`;
+          responseText += `• Final SMS-Ready Contacts: ${data.stats.final_output}\n\n`;
+          responseText += `💡 Your cleaned CSV is ready for download. Only SMS-eligible mobile numbers included for maximum conversion rates!\n\n`;
+          responseText += `Phone columns detected: ${data.phoneColumns.join(', ')}`;
+        } else {
+          responseText = `✅ Campaign CSV Successfully Formatted!\n\n📊 Processing Results:\n`;
+          responseText += `• Campaign Name: ${data.campaignName}\n`;
+          responseText += `• Total Input Records: ${data.stats.total_input}\n`;
+          responseText += `• Valid Contacts: ${data.stats.valid_contacts}\n`;
+          responseText += `• With Phone Numbers: ${data.stats.with_phone}\n`;
+          responseText += `• With Email Addresses: ${data.stats.with_email}\n`;
+          responseText += `• With Company Names: ${data.stats.with_company}\n`;
+          responseText += `• Available Variables: ${data.stats.variables_available}\n\n`;
+          responseText += `🎯 Available Variables for Messages:\n${data.availableVariables.map((v: string) => `{${v}}`).join(', ')}\n\n`;
+          responseText += `💡 Sample Messages:\n${data.sampleMessages.map((msg: string, i: number) => `${i+1}. ${msg}`).join('\n\n')}\n\n`;
+          responseText += `Your campaign CSV is ready for upload to drip campaigns!`;
+        }
+        
+        setAiResponse(responseText);
+        
+        // Add to history
+        setAiHistory(prev => [{
+          tool: activeAITool,
+          input: `File: ${uploadedFile.name}`,
+          response: responseText,
+          timestamp: new Date()
+        }, ...prev.slice(0, 9)]);
+
+        // Log the CSV processing usage
+        logActivity('csv_processed', {
+          tool: activeAITool,
+          filename: uploadedFile.name,
+          totalRecords: data.stats.total_input,
+          outputRecords: data.stats.final_output || data.stats.valid_contacts
+        });
+
+      } catch (error) {
+        console.error('Error processing CSV:', error);
+        setAiResponse('Error: ' + (error instanceof Error ? error.message : 'Failed to process CSV'));
+      } finally {
+        setAiLoading(false);
+      }
+      return;
+    }
+    
+    // Handle regular AI tools
+    if (!aiInput.trim() || aiLoading) return;
+    
+    setAiLoading(true);
+    setAiResponse('');
+    
+    try {
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'user',
+              content: aiInput
+            }
+          ],
+          tool: activeAITool,
+          context: {
+            timestamp: new Date().toISOString(),
+            user: localStorage.getItem('username') || 'anonymous'
+          }
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get AI response');
+      }
+
+      setAiResponse(data.response);
+      
+      // Add to history
+      setAiHistory(prev => [{
+        tool: activeAITool,
+        input: aiInput,
+        response: data.response,
+        timestamp: new Date()
+      }, ...prev.slice(0, 9)]); // Keep last 10 entries
+
+      // Log the AI tool usage
+      logActivity('ai_tool_used', {
+        tool: activeAITool,
+        inputLength: aiInput.length,
+        responseLength: data.response.length
+      });
+
+    } catch (error) {
+      console.error('Error calling AI tool:', error);
+      setAiResponse('Error: ' + (error instanceof Error ? error.message : 'Failed to get AI response'));
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   // Enhanced drip campaign handlers
   const handleInsertVariableInDripMessage = (templateIndex: number, variable: string) => {
     const newTemplates = [...dripCampaignForm.messageTemplates];
@@ -1327,6 +1796,18 @@ function DashboardContent() {
         <nav className="relative mt-8 z-10">
           <div 
             className={`flex items-center px-4 py-3 cursor-pointer ${
+              activeTab === 'home' 
+                ? 'bg-gradient text-white' 
+                : 'hover:bg-tech-secondary transition-colors duration-200'
+            }`}
+            onClick={() => setActiveTab('home')}
+          >
+            <HomeIcon />
+            <span className="ml-3">Home Feed</span>
+            <span className="ml-auto bg-gradient-accent text-white text-xs px-2 py-0.5 rounded-full">NEW</span>
+          </div>
+          <div 
+            className={`flex items-center px-4 py-3 cursor-pointer ${
               activeTab === 'message-editor' 
                 ? 'bg-gradient text-white' 
                 : 'hover:bg-tech-secondary transition-colors duration-200'
@@ -1364,22 +1845,19 @@ function DashboardContent() {
                 ? 'bg-gradient text-white' 
                 : 'hover:bg-tech-secondary transition-colors duration-200'
             }`}
-            onClick={() => setActiveTab('stats')}
+            onClick={() => {
+              const username = localStorage.getItem('username');
+              if (username === 'Matttrd' || username === 'Jontrd') {
+                setActiveTab('stats');
+              } else {
+                setShowAccessDenied(true);
+              }
+            }}
           >
             <StatsIcon />
             <span className="ml-3">Stats</span>
           </div>
-          <div 
-            className={`flex items-center px-4 py-3 cursor-pointer ${
-              activeTab === 'ai-rebuttal' 
-                ? 'bg-gradient text-white' 
-                : 'hover:bg-tech-secondary transition-colors duration-200'
-            }`}
-            onClick={() => setActiveTab('ai-rebuttal')}
-          >
-            <AIIcon />
-            <span className="ml-3">AI Rebuttals</span>
-          </div>
+
           <div 
             className={`flex items-center px-4 py-3 cursor-pointer ${
               activeTab === 'drip-campaign' 
@@ -1390,6 +1868,30 @@ function DashboardContent() {
           >
             <DripCampaignIcon />
             <span className="ml-3">Drip Campaign</span>
+          </div>
+          <div 
+            className={`flex items-center px-4 py-3 cursor-pointer ${
+              activeTab === 'gbp-tool' 
+                ? 'bg-gradient text-white' 
+                : 'hover:bg-tech-secondary transition-colors duration-200'
+            }`}
+            onClick={() => setActiveTab('gbp-tool')}
+          >
+            <span className="w-6 h-6 text-xl">🏢</span>
+            <span className="ml-3">GBP Audit Tool</span>
+            <span className="ml-auto bg-gradient-accent text-white text-xs px-2 py-0.5 rounded-full">PRO</span>
+          </div>
+          <div 
+            className={`flex items-center px-4 py-3 cursor-pointer ${
+              activeTab === 'ai-tools' 
+                ? 'bg-gradient text-white' 
+                : 'hover:bg-tech-secondary transition-colors duration-200'
+            }`}
+            onClick={() => setActiveTab('ai-tools')}
+          >
+            <AIIcon />
+            <span className="ml-3">AI Sales Tools</span>
+            <span className="ml-auto bg-gradient-accent text-white text-xs px-2 py-0.5 rounded-full">GPT-4o</span>
           </div>
           {/* User activity logs link - for admin users */}
           <Link href="/admin/activity-logs" 
@@ -1411,6 +1913,14 @@ function DashboardContent() {
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto bg-tech-background">
+        <div className={activeTab === 'home' ? 'block' : 'hidden'}>
+          <HomeFeed />
+        </div>
+
+        <div className={activeTab === 'gbp-tool' ? 'block' : 'hidden'}>
+          <GBPTool />
+        </div>
+        
         <div className={activeTab === 'message-editor' ? 'block' : 'hidden'}>
           <div className="p-8">
             <div className="flex items-center mb-6">
@@ -1702,7 +2212,56 @@ function DashboardContent() {
                   </div>
         </div>
                 
-                <div className="border-t border-tech-border mt-6 pt-6 flex justify-end">
+                {/* SMS Provider Selection */}
+                <div className="border-t border-tech-border mt-6 pt-6">
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      SMS Provider
+                    </label>
+                    <div className="flex bg-tech-secondary bg-opacity-50 rounded-md p-1">
+                      <button
+                        className={`flex-1 py-2 px-3 text-center text-sm rounded-md transition-colors duration-200 flex items-center justify-center ${
+                          smsProvider === 'twilio' 
+                            ? 'bg-gradient text-white' 
+                            : 'text-gray-300 hover:bg-tech-secondary'
+                        }`}
+                        onClick={() => handleSMSProviderChange('twilio')}
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                        Twilio (Premium)
+                      </button>
+                      <button
+                        className={`flex-1 py-2 px-3 text-center text-sm rounded-md transition-colors duration-200 flex items-center justify-center ${
+                          smsProvider === 'personal' 
+                            ? 'bg-gradient text-white' 
+                            : 'text-gray-300 hover:bg-tech-secondary'
+                        }`}
+                        onClick={() => handleSMSProviderChange('personal')}
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M17 2H7c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H7V6h10v10z"/>
+                        </svg>
+                        Personal Phone
+                      </button>
+                    </div>
+                    
+                    {smsProvider === 'personal' && personalSMSCredentials && (
+                      <div className="mt-2 p-3 bg-green-900 bg-opacity-20 border border-green-500 rounded-md text-green-400 text-sm">
+                        ✓ Connected to {personalSMSCredentials.provider} gateway
+                      </div>
+                    )}
+                    
+                    {smsProvider === 'personal' && !personalSMSCredentials && (
+                      <div className="mt-2 p-3 bg-yellow-900 bg-opacity-20 border border-yellow-500 rounded-md text-yellow-400 text-sm">
+                        ⚠ Personal SMS credentials required. Click "Personal Phone" to set up.
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="border-t border-tech-border pt-6 flex justify-end">
                   <button 
                     className={`${
                       isSending 
@@ -1737,11 +2296,58 @@ function DashboardContent() {
 
         <div className={activeTab === 'sms-chats' ? 'block' : 'hidden'}>
           <div className="p-8">
-            <div className="flex items-center mb-6">
-              <h2 className="text-2xl font-bold">SMS Conversations</h2>
-              <div className="ml-4 px-3 py-1 bg-tech-card text-xs rounded-full flex items-center">
-                <span className={`w-2 h-2 ${loadingConversations ? 'bg-primary animate-pulse-fast' : 'bg-primary animate-pulse-slow'} rounded-full mr-2`}></span>
-                Live Updates
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <h2 className="text-2xl font-bold">SMS Conversations</h2>
+                <div className="ml-4 px-2 py-1 bg-blue-600 text-white text-xs rounded">
+                  Active Tab: {activeTab}
+                </div>
+                <div className="ml-4 px-3 py-1 bg-tech-card text-xs rounded-full flex items-center">
+                  <span className={`w-2 h-2 ${loadingConversations ? 'bg-primary animate-pulse-fast' : 'bg-primary animate-pulse-slow'} rounded-full mr-2`}></span>
+                  Live Updates
+                </div>
+              </div>
+              
+              {/* SMS Provider Selection */}
+              <div className="flex items-center space-x-4">
+                <div className="text-sm text-gray-400">SMS Provider:</div>
+                <div className="flex bg-tech-secondary bg-opacity-50 rounded-md p-1">
+                  <button
+                    onClick={() => setSmsProvider('twilio')}
+                    className={`px-3 py-1 text-sm rounded-md transition-colors duration-200 flex items-center ${
+                      smsProvider === 'twilio' 
+                        ? 'bg-gradient text-white' 
+                        : 'text-gray-300 hover:bg-tech-secondary'
+                    }`}
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
+                    </svg>
+                    Twilio
+                  </button>
+                  <button
+                                         onClick={() => {
+                       setSmsProvider('personal');
+                       setShowPersonalSMSModal(true);
+                     }}
+                    className={`px-3 py-1 text-sm rounded-md transition-colors duration-200 flex items-center ${
+                      smsProvider === 'personal' 
+                        ? 'bg-gradient text-white' 
+                        : 'text-gray-300 hover:bg-tech-secondary'
+                    }`}
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M17 2H7c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H7V6h10v10z"></path>
+                    </svg>
+                    Personal Phone
+                  </button>
+                </div>
+                {smsProvider === 'personal' && personalSMSCredentials && (
+                  <div className="text-xs text-green-400 flex items-center">
+                    <span className="w-2 h-2 bg-green-400 rounded-full mr-1"></span>
+                    ✓ {(personalSMSCredentials.provider === 'smsmobileapi' || personalSMSCredentials.provider === 'smsmobile') ? 'SMSMobileAPI' : 'SMS Dove'}
+                  </div>
+                )}
               </div>
             </div>
             
@@ -1772,6 +2378,12 @@ function DashboardContent() {
                     <div className="p-4 text-center text-gray-400">
                       <p>No conversations found.</p>
                       <p className="text-xs mt-1">Start sending messages to see them here.</p>
+                      <button 
+                        onClick={() => setActiveTab('message-editor')}
+                        className="mt-3 px-4 py-2 bg-gradient hover:shadow-primary text-white rounded-md text-sm transition-shadow duration-300"
+                      >
+                        Start New Conversation
+                      </button>
                     </div>
                   ) : (
                     conversations.map((conversation) => (
@@ -1825,6 +2437,51 @@ function DashboardContent() {
                           {pipelineSuccess && (
                             <div className={`ml-3 px-2 py-0.5 rounded-full text-xs ${pipelineSuccess.startsWith('Error') ? 'bg-status-danger bg-opacity-20 text-status-danger' : 'bg-status-success bg-opacity-20 text-status-success'}`}>
                               {pipelineSuccess}
+                            </div>
+                          )}
+                          
+                          {/* SMS Provider Selection */}
+                          <div className="ml-4 flex items-center">
+                            <span className="text-xs text-gray-400 mr-2">Via:</span>
+                            <div className="flex bg-tech-secondary rounded-md p-1">
+                              <button
+                                onClick={() => handleSMSProviderChange('twilio')}
+                                className={`px-3 py-1 rounded-sm text-xs font-medium transition-colors duration-200 flex items-center ${
+                                  smsProvider === 'twilio'
+                                    ? 'bg-gradient text-white shadow-sm'
+                                    : 'text-gray-400 hover:text-white'
+                                }`}
+                              >
+                                <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                </svg>
+                                Twilio
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (!personalSMSCredentials) {
+                                    setShowPersonalSMSModal(true);
+                                  } else {
+                                    handleSMSProviderChange('personal');
+                                  }
+                                }}
+                                className={`px-3 py-1 rounded-sm text-xs font-medium transition-colors duration-200 flex items-center ${
+                                  smsProvider === 'personal'
+                                    ? 'bg-gradient text-white shadow-sm'
+                                    : 'text-gray-400 hover:text-white'
+                                }`}
+                              >
+                                <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path d="M17 2H7c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H7V6h10v10z"/>
+                                </svg>
+                                Personal
+                              </button>
+                            </div>
+                          </div>
+                          
+                          {smsProvider === 'personal' && personalSMSCredentials && (
+                            <div className="ml-2 px-2 py-1 bg-green-900 bg-opacity-20 border border-green-500 rounded-md text-green-400 text-xs">
+                              ✓ {personalSMSCredentials.provider}
                             </div>
                           )}
                         </div>
@@ -1912,18 +2569,18 @@ function DashboardContent() {
                                 );
                               }
                               
-                              // Add the message
+                              // Add the message with proper alignment
                               const isOutbound = message.direction === 'outbound';
                               messageGroups.push(
                                 <div key={message.sid} className={`w-full flex mb-3 ${isOutbound ? 'justify-end' : 'justify-start'}`}>
-                                  <div className={`flex max-w-[85%]`}>
-                                    {!isOutbound && (
-                                      <div className="w-8 h-8 rounded-full bg-blue-600 flex-shrink-0 mr-2 self-end flex items-center justify-center">
-                                        <span className="text-xs text-white">
-                                          {message.from && typeof message.from === 'string' ? message.from.charAt(message.from.length - 1) : '?'}
-                                        </span>
-                                      </div>
-                                    )}
+                                  <div className={`flex max-w-[85%] ${isOutbound ? 'flex-row-reverse' : 'flex-row'}`}>
+                                    <div className={`w-8 h-8 rounded-full flex-shrink-0 ${isOutbound ? 'ml-2' : 'mr-2'} self-end flex items-center justify-center ${
+                                      isOutbound ? 'bg-orange-500' : 'bg-blue-600'
+                                    }`}>
+                                      <span className="text-xs text-white">
+                                        {isOutbound ? 'Me' : (message.from && typeof message.from === 'string' ? message.from.charAt(message.from.length - 1) : '?')}
+                                      </span>
+                                    </div>
                                     
                                     <div className={`
                                       flex flex-col
@@ -1934,7 +2591,7 @@ function DashboardContent() {
                                       p-3 shadow-sm 
                                     `}>
                                       <div className="text-sm whitespace-pre-wrap break-words">{message.body}</div>
-                                      <div className={`text-xs ${isOutbound ? 'text-right mt-1 text-orange-200' : 'text-left mt-1 text-blue-100'}`}>
+                                      <div className={`text-xs ${isOutbound ? 'text-right' : 'text-left'} mt-1 ${isOutbound ? 'text-orange-200' : 'text-blue-100'}`}>
                                         {messageDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                         {isOutbound && (
                                           <span className="ml-2">
@@ -1943,12 +2600,6 @@ function DashboardContent() {
                                         )}
                                       </div>
                                     </div>
-                                    
-                                    {isOutbound && (
-                                      <div className="w-8 h-8 rounded-full bg-orange-500 flex-shrink-0 ml-2 self-end flex items-center justify-center">
-                                        <span className="text-xs text-white">Me</span>
-                                      </div>
-                                    )}
                                   </div>
                                 </div>
                               );
@@ -2422,10 +3073,16 @@ function DashboardContent() {
                     <div className="p-4">
                       <div className="text-sm text-gray-400 mb-1">Last Updated</div>
                       <div className="text-lg font-bold text-accent">
-                        {new Date(statsData.timeRange.lastUpdated).toLocaleTimeString()}
+                        {statsData.timeRange?.lastUpdated ? 
+                          new Date(statsData.timeRange.lastUpdated).toLocaleTimeString() : 
+                          new Date().toLocaleTimeString()
+                        }
                       </div>
                       <div className="mt-2 text-xs text-gray-500">
-                        {new Date(statsData.timeRange.lastUpdated).toLocaleDateString()}
+                        {statsData.timeRange?.lastUpdated ? 
+                          new Date(statsData.timeRange.lastUpdated).toLocaleDateString() :
+                          new Date().toLocaleDateString()
+                        }
                       </div>
                     </div>
                   </div>
@@ -3387,15 +4044,349 @@ function DashboardContent() {
             </div>
           </div>
         </div>
+
+        {/* AI Sales Tools Tab */}
+        <div className={activeTab === 'ai-tools' ? 'block' : 'hidden'}>
+          <div className="p-8">
+            <div className="flex items-center mb-6">
+              <h2 className="text-2xl font-bold">AI Sales Tools</h2>
+              <div className="ml-4 px-3 py-1 bg-tech-card text-xs rounded-full text-accent flex items-center">
+                <span className="w-2 h-2 bg-accent rounded-full mr-2 animate-pulse-slow"></span>
+                GPT-4o Powered
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Tool Selector */}
+              <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+                <div className="h-1 bg-gradient-accent"></div>
+                <div className="p-6">
+                  <h3 className="text-lg font-medium mb-4">Select AI Tool</h3>
+                  
+                  <div className="space-y-2">
+                    {[
+                      { id: 'instant-seo-audit', name: 'Instant SEO Audit', icon: '🚀', desc: 'Comprehensive visual SEO report' },
+                      { id: 'apollo-csv-processor', name: 'Apollo CSV Processor', icon: '📊', desc: 'Upload & filter mobile numbers' },
+                      { id: 'campaign-formatter', name: 'Campaign Formatter', icon: '🎯', desc: 'Upload CSV for drip campaigns' },
+                      { id: 'apollo-processor', name: 'Apollo Lead Processor', icon: '📈', desc: 'AI lead optimization' },
+                      { id: 'lead-qualifier', name: 'Lead Qualifier', icon: '🎯', desc: 'Score TRD prospects' },
+                      { id: 'objection-handler', name: 'Objection Handler', icon: '⚡', desc: 'Close with social engineering' },
+                      { id: 'email-generator', name: 'Email Generator', icon: '📧', desc: 'Casual high-converting emails' },
+                      { id: 'follow-up-sequences', name: 'Follow-up Sequences', icon: '📋', desc: 'Multi-touch TRD campaigns' },
+                      { id: 'competitor-analysis', name: 'Competitor Analysis', icon: '🔍', desc: 'Why TRD beats others' },
+                      { id: 'proposal-generator', name: 'Proposal Generator', icon: '📄', desc: 'Irresistible TRD offers' },
+                      { id: 'meeting-prep', name: 'Meeting Prep', icon: '🤝', desc: 'Close digital marketing deals' },
+                      { id: 'roi-calculator', name: 'ROI Calculator', icon: '💰', desc: 'TRD value propositions' }
+                    ].map((tool) => (
+                      <button
+                        key={tool.id}
+                        className={`w-full p-3 rounded-md text-left transition-colors duration-200 ${
+                          activeAITool === tool.id
+                            ? 'bg-accent bg-opacity-20 border border-accent text-accent'
+                            : 'bg-tech-secondary hover:bg-tech-border text-gray-300'
+                        }`}
+                        onClick={() => setActiveAITool(tool.id)}
+                      >
+                        <div className="flex items-center">
+                          <span className="text-lg mr-3">{tool.icon}</span>
+                          <div>
+                            <div className="font-medium text-sm">{tool.name}</div>
+                            <div className="text-xs opacity-70">{tool.desc}</div>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Input and Output */}
+              <div className="lg:col-span-2 bg-tech-card rounded-lg shadow-tech overflow-hidden">
+                <div className="h-1 bg-gradient-accent"></div>
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-medium">
+                      {[
+                        { id: 'instant-seo-audit', name: 'Instant SEO Audit Report' },
+                        { id: 'apollo-csv-processor', name: 'Apollo CSV Processor' },
+                        { id: 'campaign-formatter', name: 'Campaign Formatter' },
+                        { id: 'apollo-processor', name: 'Apollo Lead Processor' },
+                        { id: 'lead-qualifier', name: 'TRD Lead Qualifier' },
+                        { id: 'objection-handler', name: 'TRD Objection Handler' },
+                        { id: 'email-generator', name: 'TRD Email Generator' },
+                        { id: 'follow-up-sequences', name: 'TRD Follow-up Sequences' },
+                        { id: 'competitor-analysis', name: 'TRD Competitor Analysis' },
+                        { id: 'proposal-generator', name: 'TRD Proposal Generator' },
+                        { id: 'meeting-prep', name: 'TRD Meeting Prep' },
+                        { id: 'roi-calculator', name: 'TRD ROI Calculator' }
+                      ].find(t => t.id === activeAITool)?.name}
+                    </h3>
+                    <div className="text-xs text-gray-400">Powered by GPT-4o</div>
+                  </div>
+
+                  {/* Input Area */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      {activeAITool === 'instant-seo-audit' && 'Enter website URL, business name, or Google Maps link for instant SEO audit'}
+                      {activeAITool === 'apollo-csv-processor' && 'Upload Apollo CSV file to filter mobile numbers'}
+                      {activeAITool === 'campaign-formatter' && 'Upload CSV to format for drip campaigns with variables'}
+                      {activeAITool === 'apollo-processor' && 'Paste Apollo CSV data or describe your lead optimization needs'}
+                      {activeAITool === 'lead-qualifier' && 'Enter TRD prospect info (company, pain points, digital presence)'}
+                      {activeAITool === 'objection-handler' && 'Enter the objection you need to overcome for TRD services'}
+                      {activeAITool === 'email-generator' && 'Describe the prospect and TRD service you want to pitch'}
+                      {activeAITool === 'follow-up-sequences' && 'Describe your TRD prospect and their digital marketing needs'}
+                      {activeAITool === 'competitor-analysis' && 'Enter competitor agency and TRD advantages to highlight'}
+                      {activeAITool === 'proposal-generator' && 'Describe client digital marketing problems and TRD solutions'}
+                      {activeAITool === 'meeting-prep' && 'Enter prospect info and TRD meeting objectives'}
+                      {activeAITool === 'roi-calculator' && 'Describe how TRD services will impact their revenue/leads'}
+                    </label>
+                    
+                    {/* File Upload for CSV Tools */}
+                    {(activeAITool === 'apollo-csv-processor' || activeAITool === 'campaign-formatter') ? (
+                      <div>
+                        <input
+                          type="file"
+                          accept=".csv"
+                          onChange={(e) => setUploadedFile(e.target.files?.[0] || null)}
+                          className="mb-3 block w-full text-sm text-gray-300 
+                            file:mr-4 file:py-2 file:px-4 
+                            file:rounded-md file:border-0 
+                            file:text-sm file:font-semibold 
+                            file:bg-accent file:text-white 
+                            hover:file:bg-accent-light file:cursor-pointer
+                            bg-tech-input border border-tech-border rounded-md p-2"
+                        />
+                        {activeAITool === 'apollo-csv-processor' && (
+                          <div className="mb-3">
+                            <label className="block text-xs text-gray-400 mb-1">Filter Type:</label>
+                            <select 
+                              className="w-full px-3 py-2 bg-tech-input border border-tech-border rounded-md text-tech-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                              value={filterType || 'mobile_only'}
+                              onChange={(e) => setFilterType(e.target.value)}
+                            >
+                              <option value="mobile_only">Mobile Numbers Only</option>
+                              <option value="remove_landlines">Remove Landlines</option>
+                              <option value="all_with_type">All Numbers (with type)</option>
+                            </select>
+                          </div>
+                        )}
+                        {activeAITool === 'campaign-formatter' && (
+                          <div className="mb-3">
+                            <input
+                              type="text"
+                              placeholder="Campaign Name (optional)"
+                              value={campaignName || ''}
+                              onChange={(e) => setCampaignName(e.target.value)}
+                              className="w-full px-3 py-2 bg-tech-input border border-tech-border rounded-md text-tech-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                            />
+                          </div>
+                        )}
+                      </div>
+                                          ) : (
+                      <textarea
+                        className="w-full px-3 py-2 bg-tech-input border border-tech-border rounded-md text-tech-foreground focus:outline-none focus:ring-2 focus:ring-accent resize-none"
+                        rows={4}
+                        value={aiInput}
+                        onChange={(e) => setAiInput(e.target.value)}
+                        placeholder={
+                          activeAITool === 'instant-seo-audit' ? 'https://www.yourbusiness.com\n\nOR business name: "Smith Dental Practice"\n\nOR Google Maps: https://maps.google.com/place/YourBusiness\n\nGenerate comprehensive SEO audit with visual data perfect for sales presentations' :
+                          activeAITool === 'apollo-processor' ? 'Name,Email,Phone,Company,Title\nJohn Smith,john@company.com,555-123-4567,TechCorp,Marketing Director\n\nOR describe: "Need to extract cell numbers from 500 Apollo leads, remove duplicates, target decision makers..."' :
+                          activeAITool === 'lead-qualifier' ? 'ABC Construction, 50 employees, no website, struggling with lead generation, owner seems motivated, budget unknown...' :
+                          activeAITool === 'objection-handler' ? 'We already have a marketing agency / Your prices are too high / We need to think about it / We handle marketing in-house...' :
+                          activeAITool === 'email-generator' ? 'Restaurant owner, 3 locations, low online presence, needs more customers, busy lunch rush, competitor doing better...' :
+                          activeAITool === 'follow-up-sequences' ? 'Dentist practice, interested in SEO after initial call, wants more patients, concerned about online reviews...' :
+                          activeAITool === 'competitor-analysis' ? 'Competitor: WebFX vs True Rank Digital for local restaurant chain...' :
+                          activeAITool === 'proposal-generator' ? 'Law firm, 10 attorneys, terrible website, no SEO, losing clients to competitors with better online presence...' :
+                          activeAITool === 'meeting-prep' ? 'Discovery call with HVAC company owner, 20 employees, seasonal business, needs year-round leads...' :
+                          'HVAC company spends $5k/month on Yellow Pages, gets 20 leads. True Rank Digital SEO will get 80+ leads for same cost...'
+                        }
+                        disabled={aiLoading}
+                      />
+                    )}
+                  </div>
+
+                  {/* Generate/Process Button */}
+                  <button
+                    onClick={handleAIToolSubmit}
+                    disabled={
+                      (activeAITool === 'apollo-csv-processor' || activeAITool === 'campaign-formatter') 
+                        ? !uploadedFile || aiLoading 
+                        : !aiInput.trim() || aiLoading
+                    }
+                    className={`w-full py-3 px-4 rounded-md flex items-center justify-center text-white ${
+                      aiLoading
+                        ? 'bg-tech-secondary cursor-not-allowed'
+                        : 'bg-gradient-accent hover:shadow-accent'
+                    } transition-shadow duration-300`}
+                  >
+                    {aiLoading ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {(activeAITool === 'apollo-csv-processor' || activeAITool === 'campaign-formatter') ? 'Processing CSV...' : 'Generating AI Response...'}
+                      </>
+                    ) : (
+                      <>
+                        <AIIcon />
+                        <span className="ml-2">
+                          {activeAITool === 'instant-seo-audit' ? 'Generate Instant SEO Audit' :
+                           activeAITool === 'apollo-csv-processor' ? 'Process CSV' : 
+                           activeAITool === 'campaign-formatter' ? 'Format for Campaign' : 
+                           'Generate with GPT-4o'}
+                        </span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* Output Area */}
+                  {(aiResponse || aiLoading) && (
+                    <div className="mt-6">
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        AI Response
+                      </label>
+                      <div className="bg-tech-input border border-tech-border rounded-md p-4 min-h-32 max-h-96 overflow-y-auto">
+                        {aiLoading ? (
+                          <div className="flex items-center justify-center h-20">
+                            <div className="text-gray-400">AI is thinking...</div>
+                          </div>
+                        ) : (
+                          <div className="text-tech-foreground whitespace-pre-wrap">{aiResponse}</div>
+                        )}
+                      </div>
+                      
+                      {aiResponse && !aiLoading && (
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          <button
+                            onClick={() => navigator.clipboard.writeText(aiResponse)}
+                            className="px-3 py-1 bg-tech-secondary hover:bg-tech-border rounded text-xs text-gray-300 transition-colors"
+                          >
+                            📋 Copy
+                          </button>
+                          {csvOutput && (
+                            <button
+                              onClick={() => {
+                                const blob = new Blob([csvOutput], { type: 'text/csv' });
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = activeAITool === 'apollo-csv-processor' 
+                                  ? `processed_apollo_${Date.now()}.csv` 
+                                  : `campaign_${campaignName || 'apollo'}_${Date.now()}.csv`;
+                                document.body.appendChild(a);
+                                a.click();
+                                window.URL.revokeObjectURL(url);
+                                document.body.removeChild(a);
+                              }}
+                              className="px-3 py-1 bg-accent hover:bg-accent-light rounded text-xs text-white transition-colors"
+                            >
+                              📥 Download CSV
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setAiInput('')}
+                            className="px-3 py-1 bg-tech-secondary hover:bg-tech-border rounded text-xs text-gray-300 transition-colors"
+                          >
+                            🗑️ Clear Input
+                          </button>
+                          <button
+                            onClick={() => setAiResponse('')}
+                            className="px-3 py-1 bg-tech-secondary hover:bg-tech-border rounded text-xs text-gray-300 transition-colors"
+                          >
+                            ❌ Clear Response
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Recent History */}
+            {aiHistory.length > 0 && (
+              <div className="mt-6 bg-tech-card rounded-lg shadow-tech overflow-hidden">
+                <div className="h-1 bg-gradient"></div>
+                <div className="p-6">
+                  <h3 className="text-lg font-medium mb-4">Recent AI Interactions</h3>
+                  
+                  <div className="space-y-4 max-h-80 overflow-y-auto">
+                    {aiHistory.map((item, index) => (
+                      <div key={index} className="border border-tech-border rounded-md p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-sm font-medium text-accent">
+                            {[
+      
+                              { id: 'apollo-csv-processor', name: 'Apollo CSV Processor' },
+                              { id: 'campaign-formatter', name: 'Campaign Formatter' },
+                              { id: 'apollo-processor', name: 'Apollo Lead Processor' },
+                              { id: 'lead-qualifier', name: 'TRD Lead Qualifier' },
+                              { id: 'objection-handler', name: 'TRD Objection Handler' },
+                              { id: 'email-generator', name: 'TRD Email Generator' },
+                              { id: 'follow-up-sequences', name: 'TRD Follow-up Sequences' },
+                              { id: 'competitor-analysis', name: 'TRD Competitor Analysis' },
+                              { id: 'proposal-generator', name: 'TRD Proposal Generator' },
+                              { id: 'meeting-prep', name: 'TRD Meeting Prep' },
+                              { id: 'roi-calculator', name: 'TRD ROI Calculator' }
+                            ].find(t => t.id === item.tool)?.name}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            {item.timestamp.toLocaleString()}
+                          </div>
+                        </div>
+                        <div className="text-sm text-gray-300 mb-2">
+                          <strong>Input:</strong> {item.input.substring(0, 100)}...
+                        </div>
+                        <div className="text-sm text-gray-400">
+                          <strong>Response:</strong> {item.response.substring(0, 150)}...
+                        </div>
+                        <button
+                          onClick={() => {
+                            setActiveAITool(item.tool);
+                            setAiInput(item.input);
+                            setAiResponse(item.response);
+                          }}
+                          className="mt-2 text-xs text-accent hover:text-accent-light transition-colors"
+                        >
+                          ↩️ Load this interaction
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tool Information */}
+            <div className="mt-6 bg-tech-secondary bg-opacity-20 border border-tech-border rounded-lg p-4 text-sm text-gray-400">
+              <p>
+                <span className="font-medium text-accent">True Rank Digital AI Sales Arsenal:</span> These GPT-4o powered tools are specifically trained to close digital marketing deals for True Rank Digital. 
+                Each tool uses expert social engineering principles to build rapport, overcome objections, and position TRD as the obvious choice. 
+                Use casual, conversational approaches that feel natural while driving prospects toward signing with True Rank Digital.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
+      
+      {/* Personal SMS Credentials Modal */}
+      <PersonalSMSCredentials
+        isOpen={showPersonalSMSModal}
+        onClose={() => setShowPersonalSMSModal(false)}
+        onSave={handlePersonalSMSCredentials}
+      />
+      
+      {/* Access Denied Modal */}
+      <AccessDenied
+        isVisible={showAccessDenied}
+        onClose={() => setShowAccessDenied(false)}
+        restrictedPage="Stats"
+        allowedUsers={['Matt', 'Jon']}
+      />
     </div>
   );
 }
 
-// Dynamically import the dashboard with SSR disabled to prevent hydration issues
-const Dashboard = dynamic(() => Promise.resolve(DashboardContent), {
-  ssr: false,
-  loading: () => <LoadingScreen />
-});
-
-export default Dashboard;
+// Temporarily disable dynamic loading to show content immediately
+export default DashboardContent;
