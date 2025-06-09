@@ -11,6 +11,8 @@ import { PersonalSMSCredentials } from './components/PersonalSMSCredentials';
 import AccessDenied from '../components/AccessDenied';
 import HomeFeed from '../components/HomeFeed';
 import GBPTool from '../components/GBPTool';
+import { AuditHistoryTab } from './components/AuditHistoryTab';
+import { saveAiAnalysis, saveSeoAudit, saveActivityLog } from '../utils/auditStorage';
 
 // Create a loading component
 const LoadingScreen = () => (
@@ -1232,6 +1234,18 @@ function DashboardContent() {
         phoneNumber: selectedConversation,
         messageCount: conversationMessages.length
       });
+
+      // Save to audit history
+      try {
+        await saveAiAnalysis(
+          selectedConversation,
+          conversationMessages,
+          data.suggestedResponse,
+          localStorage.getItem('username') || undefined
+        );
+      } catch (error) {
+        console.error('Failed to save AI analysis to audit history:', error);
+      }
     } catch (error) {
       console.error('Error analyzing conversation:', error);
       setAiAnalysis('Sorry, I couldn\'t analyze this conversation right now. Please try again later.');
@@ -1941,6 +1955,18 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
             <AIIcon />
             <span className="ml-3">AI Sales Tools</span>
             <span className="ml-auto bg-gradient-accent text-white text-xs px-2 py-0.5 rounded-full">GPT-4o</span>
+          </div>
+          <div 
+            className={`flex items-center px-4 py-3 cursor-pointer ${
+              activeTab === 'audit-history' 
+                ? 'bg-gradient text-white' 
+                : 'hover:bg-tech-secondary transition-colors duration-200'
+            }`}
+            onClick={() => setActiveTab('audit-history')}
+          >
+            <ReportsIcon />
+            <span className="ml-3">Audit History</span>
+            <span className="ml-auto bg-gradient-accent text-white text-xs px-2 py-0.5 rounded-full">NEW</span>
           </div>
           {/* User activity logs link - for admin users */}
           <Link href="/admin/activity-logs" 
@@ -4197,6 +4223,11 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Audit History Tab */}
+        <div className={activeTab === 'audit-history' ? 'block' : 'hidden'}>
+          <AuditHistoryTab isActive={activeTab === 'audit-history'} />
         </div>
 
         {/* AI Sales Tools Tab */}
