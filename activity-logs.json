@@ -1403,5 +1403,36 @@
       "username": "Seantrd",
       "displayName": "Sean"
     }
+  },
+  {
+    "timestamp": "2025-06-09T22:33:58.177Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T22:34:19.010Z",
+    "user": "Seantrd",
+    "action": "send_chat",
+    "details": {
+      "recipient": "+14176297373",
+      "messageLength": 7,
+      "provider": "sms-gateway",
+      "gateway": "smsgateway"
+    }
+  },
+  {
+    "timestamp": "2025-06-09T22:36:42.881Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
   }
 ]
