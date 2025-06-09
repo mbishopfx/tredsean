@@ -89,6 +89,13 @@ export function SMSChatsTab({ isActive, logActivity }: SMSChatsTabProps) {
         }
         
         setConversationMessages(data.messages || []);
+        
+        // Mark conversation as read when messages are loaded
+        setConversations(prev => prev.map(conv => 
+          conv.phoneNumber === selectedConversation 
+            ? { ...conv, unreadCount: 0 }
+            : conv
+        ));
       } catch (error) {
         console.error('Error fetching messages:', error);
       } finally {
@@ -190,7 +197,13 @@ export function SMSChatsTab({ isActive, logActivity }: SMSChatsTabProps) {
             <div className="text-center text-gray-400">Loading conversations...</div>
           ) : conversations.length > 0 ? (
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {conversations.map((conversation, index) => (
+              {conversations.map((conversation, index) => {
+                const lastMessageDirection = conversation.lastMessageDirection;
+                const isUnread = conversation.unreadCount > 0;
+                const isAwaitingReply = lastMessageDirection === 'inbound' && !isUnread;
+                const wasRepliedTo = lastMessageDirection === 'outbound';
+                
+                return (
                 <div
                   key={conversation.phoneNumber || index}
                   className={`p-3 rounded-md cursor-pointer transition-colors duration-200 ${
@@ -198,35 +211,75 @@ export function SMSChatsTab({ isActive, logActivity }: SMSChatsTabProps) {
                       ? 'bg-primary bg-opacity-20 border border-primary'
                       : 'bg-tech-secondary hover:bg-tech-border'
                   }`}
-                  onClick={() => setSelectedConversation(conversation.phoneNumber)}
+                  onClick={() => {
+                    setSelectedConversation(conversation.phoneNumber);
+                    // Mark as read when conversation is opened
+                    if (isUnread) {
+                      // Update the conversation to mark as read
+                      setConversations(prev => prev.map(conv => 
+                        conv.phoneNumber === conversation.phoneNumber 
+                          ? { ...conv, unreadCount: 0 }
+                          : conv
+                      ));
+                    }
+                  }}
                 >
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-medium text-sm text-tech-foreground">
-                      {conversation.phoneNumber}
-                    </span>
-                    <span className="text-xs text-gray-400">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center space-x-2 flex-1">
+                      <span className="font-medium text-sm text-tech-foreground truncate">
+                        {conversation.phoneNumber}
+                      </span>
+                      
+                      {/* Status Indicators */}
+                      {isUnread && (
+                        <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">
+                          UNREAD
+                        </span>
+                      )}
+                      {!isUnread && isAwaitingReply && (
+                        <span className="bg-yellow-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">
+                          PENDING
+                        </span>
+                      )}
+                      {!isUnread && wasRepliedTo && (
+                        <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">
+                          REPLIED
+                        </span>
+                      )}
+                    </div>
+                    
+                    <span className="text-xs text-gray-400 ml-2">
                       {conversation.lastMessageTime && new Date(conversation.lastMessageTime).toLocaleDateString()}
                     </span>
                   </div>
                   
                   {conversation.lastMessage && (
-                    <p className="text-xs text-gray-400 truncate">
-                      {conversation.lastMessage}
-                    </p>
-                  )}
-                  
-                  {conversation.unreadCount > 0 && (
-                    <div className="flex justify-between items-center mt-2">
-                      <span className="text-xs text-gray-500">
-                        {conversation.messageCount} messages
-                      </span>
-                      <span className="bg-accent text-white text-xs px-2 py-1 rounded-full">
-                        {conversation.unreadCount} new
-                      </span>
+                    <div className="flex items-start space-x-2">
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-400 truncate">
+                          <span className="font-medium">
+                            {lastMessageDirection === 'outbound' ? 'You: ' : 'Them: '}
+                          </span>
+                          {conversation.lastMessage}
+                        </p>
+                      </div>
                     </div>
                   )}
+                  
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-xs text-gray-500">
+                      {conversation.messageCount} messages
+                    </span>
+                    
+                    {isUnread && (
+                      <span className="bg-accent text-white text-xs px-2 py-1 rounded-full font-bold animate-pulse">
+                        {conversation.unreadCount} new
+                      </span>
+                    )}
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center text-gray-400 text-sm">
@@ -256,7 +309,6 @@ export function SMSChatsTab({ isActive, logActivity }: SMSChatsTabProps) {
               ) : conversationMessages.length > 0 ? (
                 <div className="space-y-3">
                   {conversationMessages.map((message, index) => {
-                    console.log('SMSChatsTab - Message:', message.sid, 'Direction:', message.direction, 'From:', message.from);
                     const isOutbound = message.direction === 'outbound' || message.direction === 'outbound-api';
                     return (
                     <div
@@ -266,16 +318,13 @@ export function SMSChatsTab({ isActive, logActivity }: SMSChatsTabProps) {
                       <div
                         className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
                           isOutbound
-                            ? 'bg-red-500 text-white'
-                            : 'bg-green-500 text-white'
+                            ? 'bg-orange-500 text-white'
+                            : 'bg-blue-500 text-white'
                         }`}
                       >
                         <p className="text-sm">{message.body}</p>
                         <p className="text-xs opacity-70 mt-1">
-                          {new Date(message.dateCreated).toLocaleString()} 
-                          <span className="ml-2 font-bold">
-                            [{isOutbound ? 'OUT' : 'IN'}]
-                          </span>
+                          {new Date(message.dateCreated).toLocaleString()}
                         </p>
                       </div>
                     </div>
