@@ -113,12 +113,32 @@ export async function POST(request: NextRequest) {
                 if (response.ok) {
                   const responseData = await response.text();
                   console.log(`✅ Success via ${endpoint}:`, responseData);
-                                     results.push({
-                     phoneNumber: formattedPhone,
-                     success: true,
-                     endpoint,
-                     response: responseData
-                   });
+                  
+                  // Save SMS Gateway message to conversation tracking
+                  try {
+                    await fetch('/api/sms-gateway/conversations', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        phoneNumber: formattedPhone,
+                        message: message,
+                        direction: 'outbound',
+                        status: 'sent',
+                        endpoint: endpoint,
+                        response: responseData
+                      })
+                    });
+                    console.log('💾 SMS Gateway message saved to conversations');
+                  } catch (saveError) {
+                    console.log('⚠️ Failed to save SMS Gateway conversation:', saveError);
+                  }
+                  
+                  results.push({
+                    phoneNumber: formattedPhone,
+                    success: true,
+                    endpoint,
+                    response: responseData
+                  });
                   success = true;
                   break;
                 } else {

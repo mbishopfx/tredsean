@@ -340,17 +340,42 @@ function DashboardContent() {
       setLoadingConversations(true);
       
       try {
-        const response = await fetch('/api/twilio/conversations');
-        const data = await response.json();
+        // Fetch both Twilio and SMS Gateway conversations in parallel
+        const [twilioResponse, smsGatewayResponse] = await Promise.all([
+          fetch('/api/twilio/conversations'),
+          fetch('/api/sms-gateway/conversations')
+        ]);
         
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch conversations');
-        }
+        const twilioData = await twilioResponse.json();
+        const smsGatewayData = await smsGatewayResponse.json();
         
-        setConversations(data.conversations || []);
+        // Combine conversations from both sources
+        const twilioConversations = twilioData.conversations || [];
+        const smsGatewayConversations = smsGatewayData.conversations || [];
+        
+        // Mark conversations with their provider
+        const markedTwilioConversations = twilioConversations.map((conv: any) => ({
+          ...conv,
+          provider: 'twilio',
+          friendlyName: conv.friendlyName || `Twilio - ${conv.phoneNumber}`
+        }));
+        
+        const markedSmsGatewayConversations = smsGatewayConversations.map((conv: any) => ({
+          ...conv,
+          provider: 'sms_gateway',
+          friendlyName: conv.friendlyName || `SMS Gateway - ${conv.participants[0]?.identity || 'Unknown'}`
+        }));
+        
+        // Combine and sort by last message date
+        const allConversations = [...markedTwilioConversations, ...markedSmsGatewayConversations]
+          .sort((a, b) => new Date(b.dateUpdated || b.lastTimestamp || '').getTime() - new Date(a.dateUpdated || a.lastTimestamp || '').getTime());
+        
+        setConversations(allConversations);
+        
+        console.log(`📞 Loaded ${twilioConversations.length} Twilio + ${smsGatewayConversations.length} SMS Gateway conversations`);
         
         // Check for new messages and play notification sound if needed
-        const currentTotalMessages = data.conversations?.reduce((total: number, conv: any) => {
+        const currentTotalMessages = allConversations.reduce((total: number, conv: any) => {
           // Count inbound messages received in the last hour
           const recentMessages = conv.messages?.filter((m: any) => 
             m.direction === 'inbound' && 
@@ -358,7 +383,7 @@ function DashboardContent() {
           ).length || 0;
           
           return total + recentMessages;
-        }, 0) || 0;
+        }, 0);
         
         if (previousTotalMessages > 0 && currentTotalMessages > previousTotalMessages) {
           // Play notification sound
@@ -399,21 +424,38 @@ function DashboardContent() {
       setLoadingMessages(true);
       
       try {
-        const response = await fetch(`/api/twilio/conversations?phoneNumber=${encodeURIComponent(selectedConversation)}`);
-        const data = await response.json();
+        // Determine the conversation provider by checking the selectedConversation format
+        const isGatewayConversation = selectedConversation.startsWith('sms_gateway_');
         
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch messages');
+        if (isGatewayConversation) {
+          // Extract phone number from SMS Gateway conversation ID
+          const phoneNumber = selectedConversation.replace('sms_gateway_', '');
+          const response = await fetch(`/api/sms-gateway/messages?phoneNumber=${encodeURIComponent(phoneNumber)}`);
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to fetch SMS Gateway messages');
+          }
+          
+          setConversationMessages(data.messages || []);
+        } else {
+          // Fetch Twilio messages
+          const response = await fetch(`/api/twilio/conversations?phoneNumber=${encodeURIComponent(selectedConversation)}`);
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to fetch Twilio messages');
+          }
+          
+          setConversationMessages(data.messages || []);
         }
-        
-        setConversationMessages(data.messages || []);
       } catch (error) {
         console.error('Error fetching messages:', error);
       } finally {
         setLoadingMessages(false);
       }
     }
-    
+
     fetchMessages();
   }, [selectedConversation]);
   
