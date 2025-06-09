@@ -7,7 +7,7 @@ type MessageData = {
   body: string;
   from: string;
   to: string;
-  direction: 'inbound' | 'outbound';
+  direction: 'inbound' | 'outbound' | 'outbound-api';
   status: string;
   dateCreated: string;
   dateUpdated: string;
@@ -18,7 +18,7 @@ type Conversation = {
   messages: MessageData[];
   lastMessageDate: string;
   lastMessageText: string;
-  lastMessageDirection: 'inbound' | 'outbound';
+  lastMessageDirection: 'inbound' | 'outbound' | 'outbound-api';
   unreadCount: number;
 };
 

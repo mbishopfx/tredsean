@@ -1857,7 +1857,7 @@ function DashboardContent() {
                                   }
                                   
                                   // Add the message
-                                  const isOutbound = message.direction === 'outbound';
+                                  const isOutbound = message.direction === 'outbound' || message.direction === 'outbound-api';
                                   messageGroups.push(
                                     <div key={message.sid} className={`w-full flex mb-3 ${isOutbound ? 'justify-end' : 'justify-start'}`}>
                                       <div className={`flex max-w-[85%]`}>

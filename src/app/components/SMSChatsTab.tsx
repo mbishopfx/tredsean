@@ -258,11 +258,11 @@ export function SMSChatsTab({ isActive, logActivity }: SMSChatsTabProps) {
                   {conversationMessages.map((message, index) => (
                     <div
                       key={message.sid || index}
-                      className={`flex ${message.direction === 'outbound' ? 'justify-end' : 'justify-start'}`}
+                      className={`flex ${(message.direction === 'outbound' || message.direction === 'outbound-api') ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
                         className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
-                          message.direction === 'outbound'
+                          (message.direction === 'outbound' || message.direction === 'outbound-api')
                             ? 'bg-primary text-white'
                             : 'bg-tech-secondary text-tech-foreground'
                         }`}

@@ -2570,7 +2570,7 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
                               }
                               
                               // Add the message with proper alignment
-                              const isOutbound = message.direction === 'outbound';
+                              const isOutbound = message.direction === 'outbound' || message.direction === 'outbound-api';
                               messageGroups.push(
                                 <div key={message.sid} className={`w-full flex mb-3 ${isOutbound ? 'justify-end' : 'justify-start'}`}>
                                   <div className={`flex max-w-[85%] ${isOutbound ? 'flex-row-reverse' : 'flex-row'}`}>
