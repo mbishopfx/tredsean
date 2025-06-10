@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 
+interface HomeFeedProps {
+  onNavigate?: (tab: string) => void;
+}
+
 interface Post {
   id: string;
   author: string;
@@ -20,7 +24,7 @@ interface Comment {
   timestamp: Date;
 }
 
-const HomeFeed: React.FC = () => {
+const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPost, setNewPost] = useState('');
   const [isPosting, setIsPosting] = useState(false);
@@ -456,13 +460,14 @@ const HomeFeed: React.FC = () => {
                   <h3 className="text-lg font-semibold mb-4 text-tech-foreground">Quick Actions</h3>
                   <div className="space-y-3">
                     {[
-                      { label: 'Message Sender', icon: '💬', color: 'from-blue-500 to-cyan-500' },
-                      { label: 'AI Tools', icon: '🤖', color: 'from-purple-500 to-pink-500' },
-                      { label: 'Analytics', icon: '📊', color: 'from-green-500 to-blue-500' },
-                      { label: 'Tutorials', icon: '📚', color: 'from-orange-500 to-red-500' }
+                      { label: 'Message Sender', icon: '💬', color: 'from-blue-500 to-cyan-500', tab: 'message-sender' },
+                      { label: 'AI Tools', icon: '🤖', color: 'from-purple-500 to-pink-500', tab: 'ai-tools' },
+                      { label: 'Analytics', icon: '📊', color: 'from-green-500 to-blue-500', tab: 'stats' },
+                      { label: 'Tutorials', icon: '📚', color: 'from-orange-500 to-red-500', tab: 'tutorials' }
                     ].map((action, index) => (
                       <button
                         key={index}
+                        onClick={() => onNavigate?.(action.tab)}
                         className={`w-full p-3 rounded-xl bg-gradient-to-r ${action.color} text-white font-medium hover:shadow-lg transition-all duration-200 hover:scale-105`}
                       >
                         <span className="mr-2">{action.icon}</span>

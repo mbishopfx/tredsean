@@ -2172,7 +2172,7 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
       {/* Main Content */}
       <div className="flex-1 overflow-auto bg-tech-background">
         <div className={activeTab === 'home' ? 'block' : 'hidden'}>
-          <HomeFeed />
+          <HomeFeed onNavigate={setActiveTab} />
         </div>
 
         <div className={activeTab === 'gbp-tool' ? 'block' : 'hidden'}>
