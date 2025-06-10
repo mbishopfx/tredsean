@@ -369,9 +369,9 @@ const TutorialsGuide: React.FC<TutorialsGuideProps> = ({ isActive }) => {
                 <p className="text-gray-400 text-sm">bishop@truerankdigital.com</p>
               </div>
               <div className="text-center">
-                <div className="text-3xl mb-2">💬</div>
-                <h4 className="font-medium text-tech-foreground">Live Chat</h4>
-                <p className="text-gray-400 text-sm">Available during business hours</p>
+                <div className="text-3xl mb-2">🔧</div>
+                <h4 className="font-medium text-tech-foreground">Platform Training</h4>
+                <p className="text-gray-400 text-sm">Complete video tutorials available</p>
               </div>
               <div className="text-center">
                 <div className="text-3xl mb-2">📚</div>

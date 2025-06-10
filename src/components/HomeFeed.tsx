@@ -20,6 +20,14 @@ interface Comment {
   timestamp: Date;
 }
 
+interface QuickStat {
+  label: string;
+  value: string;
+  change: string;
+  changeType: 'positive' | 'negative' | 'neutral';
+  icon: string;
+}
+
 const HomeFeed: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPost, setNewPost] = useState('');
@@ -27,6 +35,13 @@ const HomeFeed: React.FC = () => {
   const [activeCommentPost, setActiveCommentPost] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
   const [filter, setFilter] = useState<'all' | 'user' | 'ai'>('all');
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update time every minute
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Get current user info
   const getCurrentUser = () => {
@@ -40,6 +55,38 @@ const HomeFeed: React.FC = () => {
     const { username } = getCurrentUser();
     return username === 'Matttrd' || username === 'Jontrd' || username === 'Jessetrd';
   };
+
+  // Quick stats data
+  const quickStats: QuickStat[] = [
+    {
+      label: 'Team Members',
+      value: '8',
+      change: '+2 this month',
+      changeType: 'positive',
+      icon: '👥'
+    },
+    {
+      label: 'Active Campaigns',
+      value: '24',
+      change: '+6 this week',
+      changeType: 'positive',
+      icon: '📊'
+    },
+    {
+      label: 'Messages Sent',
+      value: '12.5K',
+      change: '+18% this month',
+      changeType: 'positive',
+      icon: '💬'
+    },
+    {
+      label: 'Success Rate',
+      value: '94.2%',
+      change: '+2.1% improved',
+      changeType: 'positive',
+      icon: '🎯'
+    }
+  ];
 
   // Load posts from localStorage
   useEffect(() => {
@@ -80,108 +127,11 @@ const HomeFeed: React.FC = () => {
     "🎯 Target Long-Tail Keywords: 'Best plumber in [city]' converts better than just 'plumber' - less competition, higher intent.",
     "📍 Google My Business Power: Businesses with complete GMB profiles get 70% more location visits than incomplete profiles.",
     "💬 Reviews Drive Revenue: Each additional star in your rating can increase revenue by 5-19% according to Harvard research.",
-    "🔗 Link Building Strategy: One high-quality backlink from a local authority site beats 100 low-quality directory submissions.",
-    "📝 Content Marketing Truth: Answer the questions your customers ask, and Google will send them to you.",
-    "🎥 Video SEO Advantage: Videos are 50x more likely to appear on Google's first page than text-only content.",
-    "📊 Analytics Insight: Track phone calls, not just website visits. Phone leads convert 10x higher than web forms.",
-    "🏆 Competitive Analysis: Your competitor's backlinks are your roadmap. See who links to them, then get better links.",
-    "🎯 Schema Markup: Structured data helps Google understand your content and can increase click-through rates by 30%.",
-    "📱 Voice Search Optimization: 20% of searches are voice searches. Optimize for conversational keywords.",
-    "🔍 Featured Snippets: Ranking in position 0 (featured snippet) gets 35% of all clicks, even above position 1.",
-    "📊 Seasonal SEO Planning: Start optimizing for seasonal keywords 3-4 months before the season begins.",
-    "🎯 Local Citations Consistency: Your business name, address, and phone must be identical across all 50+ citation sites.",
-    "💡 User Experience Signals: Google measures how people interact with your site. Good UX = better rankings.",
-    "📍 Proximity Ranking Factor: Being physically closer to the searcher gives you a ranking advantage in local search.",
-    "🔗 Internal Linking Strategy: Strategic internal links can boost page rankings by 25% without any external backlinks.",
-    "📊 E-A-T Algorithm: Expertise, Authoritativeness, Trustworthiness. Google ranks sites that demonstrate all three higher.",
-    "🎯 Keyword Cannibalization: Multiple pages targeting the same keyword compete against each other. Consolidate for power.",
-    "📱 Core Web Vitals: Google's page experience update makes site performance a direct ranking factor.",
-    "🔍 Search Volume vs Competition: Sometimes it's better to rank #1 for 100 searches than #10 for 10,000 searches.",
-    "📝 Content Clusters: Group related content around pillar topics to show Google you're an authority on the subject.",
-    "🎯 Local Keyword Variations: Don't just target '[service] + [city]'. Target '[service] near me', '[service] in [area]', etc.",
-    "📊 CTR Optimization: Your title and meta description are your ad copy. Make them compelling to increase click-through rates.",
-    "🏆 Domain Authority Building: Focus on getting links from sites with higher domain authority than yours.",
-    "📍 Google Posts Impact: Regular Google My Business posts can increase customer actions by 30%.",
-    "🔍 Search Console Insights: Use Google Search Console to find queries where you rank 11-20. These are quick wins to optimize.",
-    "📊 Bounce Rate Factor: If people immediately leave your site, Google assumes it's not relevant. Improve engagement.",
-    "🎯 Geo-Targeted Landing Pages: Create separate pages for each service area to dominate local search completely.",
-    "📱 AMP Implementation: Accelerated Mobile Pages load 4x faster and get preferential treatment in mobile search.",
-    "🔗 Link Velocity Matters: Getting 10 links over 10 weeks looks more natural than getting 10 links in 1 week.",
-    "📝 FAQ Schema Benefits: FAQ structured data can help you rank for multiple related queries on one page.",
-    "🎯 Negative SEO Protection: Monitor your backlink profile monthly. Bad links can hurt your rankings.",
-    "📊 Local Search Ranking Factors: Proximity (25%), Relevance (25%), and Prominence (50%) determine local rankings.",
-    "🔍 Intent-Based Content: Create different content for 'What is', 'How to', 'Best', and 'Near me' search intents.",
-    "📍 Citation Building Priority: Focus on the big ones first: Google, Yelp, Facebook, Apple Maps, Bing Places.",
-    "🎯 Competitor Content Gaps: Find topics your competitors rank for that you don't. Create better content for those topics.",
-    "📊 Technical SEO Audit: Fix crawl errors, broken links, and duplicate content before focusing on link building.",
-    "🔗 Link Building Outreach: Personalized emails get 3x higher response rates than generic template emails.",
-    "📱 Mobile Usability: Google's mobile-first indexing means your mobile site is your primary site now.",
-    "🎯 Keyword Research Evolution: Focus on search intent and topic clusters, not just individual keywords.",
-    "📝 Content Quality Over Quantity: One comprehensive 3,000-word article beats five shallow 500-word posts.",
-    "🔍 Search Trends Analysis: Use Google Trends to time your content around seasonal search patterns.",
-    "📊 Conversion Tracking Setup: Track which keywords and pages generate actual customers, not just traffic.",
-    "🎯 Local Link Building: Partner with local organizations, sponsor events, and engage with community websites.",
-    "📍 GMB Optimization: Complete every section, add photos weekly, respond to reviews, and post updates regularly.",
-    "🔗 Link Quality Assessment: One link from a local newspaper beats 50 links from random blog networks.",
-    "📊 Page Experience Update: Core Web Vitals, mobile-friendliness, and HTTPS are now ranking factors.",
-    "🎯 Content Marketing ROI: Educational content generates 3x more leads than paid advertising at 62% less cost.",
-    "🔍 Zero-Click Searches: 50% of searches don't result in clicks. Optimize for featured snippets to capture these.",
-    "📝 Blog Post Optimization: Include target keywords in title, first paragraph, subheadings, and naturally throughout.",
-    "🎯 Anchor Text Diversity: Vary your link anchor text. Too much exact-match anchor text looks unnatural to Google.",
-    "📊 Rank Tracking Strategy: Track rankings for buyer-intent keywords, not just brand terms or high-volume keywords.",
-    "🔗 Guest Posting Strategy: Focus on industry relevance and audience overlap, not just domain authority.",
-    "📍 Local SEO Citation Building: Consistency across directories is more important than quantity of citations.",
-    "🎯 Content Update Strategy: Refresh and expand existing content regularly. Updated content gets ranking boosts.",
-    "📊 Analytics Segmentation: Separate organic traffic by location, device, and landing page for better insights.",
-    "🔍 SERP Feature Optimization: Optimize for image packs, local packs, and knowledge panels, not just organic listings.",
-    "📝 Meta Description Psychology: Write descriptions that create curiosity and urgency to improve click-through rates.",
-    "🎯 Keyword Difficulty Assessment: Target keywords where you can realistically rank in the top 5 within 6 months.",
-    "📊 Local Competition Analysis: Study businesses ranking above you locally. What are they doing differently?",
-    "🔗 Link Building Scale: Aim for 2-5 high-quality links per month rather than 50 low-quality links.",
-    "📍 Service Area Expansion: Create location pages for all areas you serve, even if you don't have physical offices.",
-    "🎯 Content Calendar Planning: Align content creation with seasonal search trends and business goals.",
-    "📊 Conversion Rate Optimization: A 1% improvement in conversion rate often beats a 10% increase in traffic.",
-    "🔍 Search Query Analysis: Study actual search queries bringing traffic. Often different from your target keywords.",
-    "📝 Title Tag Optimization: Include location and service for local businesses. 'Best [Service] in [City] | [Brand]'",
-    "🎯 Link Building Relationships: Build genuine relationships with other business owners for natural link opportunities.",
-    "📊 ROI Measurement: Track lifetime customer value, not just immediate conversions from SEO traffic.",
-    "🔗 Internal Link Strategy: Use descriptive anchor text for internal links to help Google understand page topics.",
-    "📍 Google Reviews Strategy: More reviews + higher ratings = better local rankings. Make review requests systematic.",
-    "🎯 Content Pillar Strategy: Create comprehensive guides on main topics, then support with detailed sub-topic pages.",
-    "📊 Technical SEO Monitoring: Set up alerts for site speed, uptime, and crawl errors. Fix issues immediately.",
-    "🔍 Long-Term SEO Mindset: SEO is a marathon, not a sprint. Consistent effort beats sporadic intense campaigns.",
-    "📝 Content Repurposing: Turn one comprehensive blog post into social media posts, videos, and infographics.",
-    "🎯 Competitor Backlink Analysis: Monthly audits of competitor backlinks reveal new link building opportunities.",
-    "📊 Local Search Behavior: 'Near me' searches have grown 150% faster than regular searches in recent years.",
-    "🔗 Link Building Quality Control: Disavow toxic links quarterly to protect your site's authority.",
-    "📍 Multi-Location SEO: Each location needs its own dedicated page with unique content and local keywords.",
-    "🎯 Content Marketing Psychology: Address fears, desires, and pain points of your target audience in content.",
-    "📊 SEO Tool Integration: Connect Google Analytics, Search Console, and rank tracking for comprehensive insights.",
-    "🔍 Featured Snippet Optimization: Answer questions clearly in 40-50 words for featured snippet opportunities.",
-    "📝 Blog Post Structure: Use clear headings, short paragraphs, and bullet points for better readability and SEO.",
-    "🎯 Seasonal Link Building: Pitch seasonal content and resources to earn links during relevant time periods.",
-    "📊 Mobile Page Speed: 53% of users abandon mobile sites that take longer than 3 seconds to load.",
-    "🔗 Link Building Persistence: Most successful link building outreach requires 3-5 follow-up emails.",
-    "📍 Local Landing Page Strategy: Create unique pages for each service in each location you serve.",
-    "🎯 Content Gap Analysis: Find keywords your competitors rank for that you don't. Fill those content gaps.",
-    "📊 SEO Reporting Focus: Report on metrics that matter to business: leads, customers, revenue, not just rankings.",
-    "🔍 Voice Search Adaptation: Optimize for question-based queries and conversational search patterns.",
-    "📝 Content Quality Metrics: Measure time on page, scroll depth, and return visitors to gauge content quality.",
-    "🎯 Link Building Diversification: Earn links from various types of sites: news, industry, local, educational.",
-    "📊 Local SEO Tracking: Monitor local pack rankings separately from organic rankings for complete visibility.",
-    "🔗 Internal Link Architecture: Create clear site structure with logical linking patterns for better crawling.",
-    "📍 Citations Cleanup: Regularly audit and correct inconsistent business information across all directories.",
-    "🎯 Content Marketing Distribution: Great content without promotion is worthless. Plan distribution strategy first.",
-    "📊 SEO A/B Testing: Test different title tags, meta descriptions, and content formats to improve performance.",
-    "🔍 Search Intent Evolution: Search intent changes over time. Regularly update content to match current intent.",
-    "📝 Content Length Strategy: Match content length to search intent: quick answers vs comprehensive guides.",
-    "🎯 Link Building Template: Create reusable email templates but always personalize them for each outreach.",
-    "📊 Technical SEO Priority: Fix critical issues first: crawlability, indexability, site speed, mobile usability."
+    "🔗 Link Building Strategy: One high-quality backlink from a local authority site beats 100 low-quality directory submissions."
   ];
 
   // Generate AI content for the feed
   const generateAIPost = async () => {
-    // Use the TRD high-level tips instead of fake success stories
     const randomTip = trdHighLevelTips[Math.floor(Math.random() * trdHighLevelTips.length)];
     
     const categories = [
@@ -199,30 +149,30 @@ const HomeFeed: React.FC = () => {
   const generateInitialPosts = async () => {
     const initialPosts: Post[] = [
       {
-        id: '1',
-        author: 'TRD AI Assistant',
-        authorRole: 'AI Coach',
-        content: '🎯 Welcome to the TRD Feed! This is your central hub for high-level SEO tips, marketing insights, and team updates. Ready to dominate? 💪',
-        timestamp: new Date(Date.now() - 86400000), // 1 day ago
+        id: Date.now().toString(),
+        author: 'TRD AI Coach',
+        authorRole: 'AI Marketing Assistant',
+        content: 'Welcome to the TRD Team Feed! 🚀 This is your central hub for team updates, AI-powered insights, and marketing wisdom. I\'ll be sharing daily tips to help you dominate local search and close more deals. Let\'s make this quarter legendary! 💪',
+        timestamp: new Date(),
         type: 'ai',
-        likes: 0, // No mock likes
+        likes: 0,
         comments: [],
         aiGenerated: true,
         category: 'Welcome'
       }
     ];
 
-    // Generate 4 more AI posts with genuine tips
-    for (let i = 0; i < 4; i++) {
+    // Add some recent AI tips
+    for (let i = 0; i < 3; i++) {
       const aiContent = await generateAIPost();
       initialPosts.push({
-        id: Date.now().toString() + i,
+        id: `ai_${Date.now() + i}`,
         author: 'TRD AI Coach',
-        authorRole: 'AI Marketing Expert',
+        authorRole: 'AI Marketing Assistant',
         content: aiContent.content,
-        timestamp: new Date(Date.now() - (Math.random() * 172800000)), // Random time in last 2 days
+        timestamp: new Date(Date.now() - (i * 2 * 60 * 60 * 1000)), // Stagger by 2 hours
         type: 'ai',
-        likes: 0, // No mock likes
+        likes: Math.floor(Math.random() * 5),
         comments: [],
         aiGenerated: true,
         category: aiContent.category
@@ -233,49 +183,16 @@ const HomeFeed: React.FC = () => {
     savePosts(initialPosts);
   };
 
-  // Auto-refresh AI content every 45 seconds
-  useEffect(() => {
-    const refreshAIContent = async () => {
-      const newAIContent = await generateAIPost();
-      const newAIPost: Post = {
-        id: `ai-refresh-${Date.now()}`,
-        author: 'TRD AI Coach',
-        authorRole: 'AI Marketing Expert',
-        content: newAIContent.content,
-        timestamp: new Date(),
-        type: 'ai',
-        likes: 0,
-        comments: [],
-        aiGenerated: true,
-        category: newAIContent.category
-      };
-
-      setPosts(prevPosts => {
-        // Add new AI post and keep only the most recent 20 posts to prevent infinite growth
-        const updatedPosts = [newAIPost, ...prevPosts].slice(0, 20);
-        savePosts(updatedPosts);
-        return updatedPosts;
-      });
-    };
-
-    // Set up 45-second interval for AI content refresh
-    const aiRefreshInterval = setInterval(refreshAIContent, 45000);
-
-    // Cleanup interval on component unmount
-    return () => clearInterval(aiRefreshInterval);
-  }, []);
-
-  // Handle new post submission
   const handleSubmitPost = async () => {
-    if (!newPost.trim() || !canPost()) return;
-
+    if (!newPost.trim()) return;
+    
     setIsPosting(true);
     const { displayName } = getCurrentUser();
-
+    
     const post: Post = {
       id: Date.now().toString(),
       author: displayName,
-      authorRole: 'Team Lead',
+      authorRole: 'Team Leader',
       content: newPost,
       timestamp: new Date(),
       type: 'user',
@@ -286,37 +203,14 @@ const HomeFeed: React.FC = () => {
     const updatedPosts = [post, ...posts];
     setPosts(updatedPosts);
     savePosts(updatedPosts);
+    
     setNewPost('');
     setIsPosting(false);
-
-    // Generate an AI response post occasionally
-    if (Math.random() > 0.7) {
-      setTimeout(async () => {
-        const aiContent = await generateAIPost();
-        const aiPost: Post = {
-          id: (Date.now() + 1).toString(),
-          author: 'TRD AI Coach',
-          authorRole: 'AI Sales Assistant',
-          content: `💬 Great point! ${aiContent.content}`,
-          timestamp: new Date(),
-          type: 'ai',
-          likes: 0,
-          comments: [],
-          aiGenerated: true,
-          category: aiContent.category
-        };
-
-        const newPosts = [aiPost, ...updatedPosts];
-        setPosts(newPosts);
-        savePosts(newPosts);
-      }, 3000);
-    }
   };
 
-  // Handle adding comments
   const handleAddComment = (postId: string) => {
     if (!newComment.trim()) return;
-
+    
     const { displayName } = getCurrentUser();
     const comment: Comment = {
       id: Date.now().toString(),
@@ -334,10 +228,8 @@ const HomeFeed: React.FC = () => {
     setPosts(updatedPosts);
     savePosts(updatedPosts);
     setNewComment('');
-    setActiveCommentPost(null);
   };
 
-  // Handle likes
   const handleLike = (postId: string) => {
     const updatedPosts = posts.map(post => 
       post.id === postId 
@@ -355,208 +247,336 @@ const HomeFeed: React.FC = () => {
   });
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gradient">TRD Team Feed</h1>
-          <p className="text-gray-400 mt-1">Stay connected with your team and AI coaching</p>
-        </div>
-        
-        {/* Filter Buttons */}
-        <div className="flex bg-tech-secondary bg-opacity-50 rounded-lg p-1">
-          {[
-            { id: 'all', label: 'All Posts', icon: '📋' },
-            { id: 'user', label: 'Team Updates', icon: '👥' },
-            { id: 'ai', label: 'AI Insights', icon: '🤖' }
-          ].map((filterOption) => (
-            <button
-              key={filterOption.id}
-              onClick={() => setFilter(filterOption.id as any)}
-              className={`px-4 py-2 text-sm rounded-md transition-colors duration-200 flex items-center gap-2 ${
-                filter === filterOption.id
-                  ? 'bg-gradient text-white'
-                  : 'text-gray-300 hover:bg-tech-secondary'
-              }`}
-            >
-              <span>{filterOption.icon}</span>
-              {filterOption.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* New Post Section - Only for Matt and Jon */}
-      {canPost() && (
-        <div className="bg-tech-card rounded-xl shadow-tech overflow-hidden mb-8">
-          <div className="h-1 bg-gradient"></div>
-          <div className="p-6">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-gradient rounded-full flex items-center justify-center text-white font-bold">
-                {getCurrentUser().displayName.charAt(0)}
-              </div>
-              <div className="flex-1">
-                <textarea
-                  value={newPost}
-                  onChange={(e) => setNewPost(e.target.value)}
-                  placeholder="Share an update, success story, or motivational message with the team..."
-                  className="w-full p-4 bg-tech-input border border-tech-border rounded-lg text-tech-foreground focus:outline-none focus:ring-2 focus:ring-accent resize-none"
-                  rows={4}
-                />
-                <div className="flex justify-between items-center mt-4">
-                  <div className="text-sm text-gray-400">
-                    {newPost.length}/1000 characters
+    <div className="min-h-screen bg-gradient-to-br from-tech-background via-tech-background to-tech-secondary">
+      <div className="max-w-7xl mx-auto p-6">
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-cyan-400 bg-clip-text text-transparent mb-2">
+                TRD Command Center
+              </h1>
+              <p className="text-gray-400 text-lg">Real-time team insights and AI-powered marketing intelligence</p>
+            </div>
+            
+            <div className="mt-4 lg:mt-0">
+              <div className="bg-tech-card rounded-xl p-4 border border-tech-border">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-400">
+                    {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
+                  <div className="text-sm text-gray-400">
+                    {currentTime.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Stats Dashboard */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {quickStats.map((stat, index) => (
+              <div key={index} className="bg-tech-card rounded-xl shadow-tech overflow-hidden hover:shadow-xl transition-all duration-300 hover:transform hover:scale-105">
+                <div className="h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-3xl">{stat.icon}</div>
+                    <div className={`px-2 py-1 rounded-full text-xs ${
+                      stat.changeType === 'positive' ? 'bg-green-900 bg-opacity-30 text-green-400' :
+                      stat.changeType === 'negative' ? 'bg-red-900 bg-opacity-30 text-red-400' :
+                      'bg-yellow-900 bg-opacity-30 text-yellow-400'
+                    }`}>
+                      {stat.change}
+                    </div>
+                  </div>
+                  <div className="text-2xl font-bold text-tech-foreground mb-1">{stat.value}</div>
+                  <div className="text-gray-400 text-sm">{stat.label}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+          {/* Main Feed */}
+          <div className="xl:col-span-3">
+            {/* Filter Controls */}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-tech-foreground">Activity Feed</h2>
+              <div className="flex bg-tech-card rounded-xl p-1 border border-tech-border">
+                {[
+                  { id: 'all', label: 'All Posts', icon: '📋' },
+                  { id: 'user', label: 'Team Updates', icon: '👥' },
+                  { id: 'ai', label: 'AI Insights', icon: '🤖' }
+                ].map((filterOption) => (
                   <button
-                    onClick={handleSubmitPost}
-                    disabled={!newPost.trim() || isPosting}
-                    className={`px-6 py-2 rounded-lg flex items-center gap-2 transition-colors ${
-                      !newPost.trim() || isPosting
-                        ? 'bg-tech-secondary text-gray-400 cursor-not-allowed'
-                        : 'bg-gradient hover:shadow-accent text-white'
+                    key={filterOption.id}
+                    onClick={() => setFilter(filterOption.id as any)}
+                    className={`px-4 py-2 text-sm rounded-lg transition-all duration-200 flex items-center gap-2 ${
+                      filter === filterOption.id
+                        ? 'bg-gradient text-white shadow-lg'
+                        : 'text-gray-300 hover:bg-tech-secondary'
                     }`}
                   >
-                    {isPosting ? (
-                      <>
-                        <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Posting...
-                      </>
-                    ) : (
-                      <>
-                        📝 Post Update
-                      </>
-                    )}
+                    <span>{filterOption.icon}</span>
+                    {filterOption.label}
                   </button>
-                </div>
+                ))}
               </div>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* Posts Feed */}
-      <div className="space-y-6">
-        {filteredPosts.map((post) => (
-          <div key={post.id} className="bg-tech-card rounded-xl shadow-tech overflow-hidden">
-            <div className={`h-1 ${post.type === 'ai' ? 'bg-gradient-accent' : 'bg-gradient'}`}></div>
-            <div className="p-6">
-              {/* Post Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
-                    post.type === 'ai' ? 'bg-gradient-accent' : 'bg-gradient'
-                  }`}>
-                    {post.type === 'ai' ? '🤖' : post.author.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-tech-foreground">{post.author}</h3>
-                      <span className="text-xs bg-tech-secondary px-2 py-1 rounded-full text-gray-300">
-                        {post.authorRole}
-                      </span>
+            {/* New Post Section */}
+            {canPost() && (
+              <div className="bg-tech-card rounded-xl shadow-tech overflow-hidden mb-8 border border-tech-border">
+                <div className="h-1 bg-gradient-to-r from-green-500 to-blue-500"></div>
+                <div className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                      {getCurrentUser().displayName.charAt(0)}
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <span>{post.timestamp.toLocaleString()}</span>
-                      {post.category && (
-                        <>
-                          <span>•</span>
-                          <span className="text-accent">{post.category}</span>
-                        </>
+                    <div className="flex-1">
+                      <textarea
+                        value={newPost}
+                        onChange={(e) => setNewPost(e.target.value)}
+                        placeholder="Share an update, success story, or motivational message with the team..."
+                        className="w-full p-4 bg-tech-input border border-tech-border rounded-xl text-tech-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all duration-200"
+                        rows={4}
+                      />
+                      <div className="flex justify-between items-center mt-4">
+                        <div className="text-sm text-gray-400">
+                          {newPost.length}/1000 characters
+                        </div>
+                        <button
+                          onClick={handleSubmitPost}
+                          disabled={!newPost.trim() || isPosting}
+                          className={`px-6 py-3 rounded-xl flex items-center gap-2 transition-all duration-200 font-medium ${
+                            !newPost.trim() || isPosting
+                              ? 'bg-tech-secondary text-gray-400 cursor-not-allowed'
+                              : 'bg-gradient hover:shadow-lg hover:shadow-blue-500/25 text-white transform hover:scale-105'
+                          }`}
+                        >
+                          {isPosting ? (
+                            <>
+                              <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Publishing...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                              </svg>
+                              Post Update
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Posts Feed */}
+            <div className="space-y-6">
+              {filteredPosts.map((post, index) => (
+                <div key={post.id} className="bg-tech-card rounded-xl shadow-tech overflow-hidden border border-tech-border hover:shadow-xl transition-all duration-300">
+                  <div className={`h-1 ${post.type === 'ai' ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gradient-to-r from-blue-500 to-cyan-500'}`}></div>
+                  <div className="p-6">
+                    {/* Post Header */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg ${
+                          post.type === 'ai' 
+                            ? 'bg-gradient-to-br from-purple-500 to-pink-600' 
+                            : 'bg-gradient-to-br from-blue-500 to-cyan-600'
+                        }`}>
+                          {post.type === 'ai' ? '🤖' : post.author.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-tech-foreground text-lg">{post.author}</h3>
+                            <span className={`text-xs px-3 py-1 rounded-full font-medium ${
+                              post.type === 'ai' 
+                                ? 'bg-purple-900 bg-opacity-30 text-purple-300' 
+                                : 'bg-blue-900 bg-opacity-30 text-blue-300'
+                            }`}>
+                              {post.authorRole}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-400 mt-1">
+                            <span>{post.timestamp.toLocaleString()}</span>
+                            {post.category && (
+                              <>
+                                <span>•</span>
+                                <span className="text-accent font-medium">{post.category}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      {post.aiGenerated && (
+                        <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg">
+                          AI Generated
+                        </div>
                       )}
                     </div>
-                  </div>
-                </div>
-                {post.aiGenerated && (
-                  <div className="bg-accent bg-opacity-20 text-accent px-2 py-1 rounded text-xs">
-                    AI Generated
-                  </div>
-                )}
-              </div>
 
-              {/* Post Content */}
-              <div className="text-tech-foreground mb-4 leading-relaxed">
-                {post.content}
-              </div>
-
-              {/* Post Actions */}
-              <div className="flex items-center justify-between pt-4 border-t border-tech-border">
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={() => handleLike(post.id)}
-                    className="flex items-center gap-2 text-gray-400 hover:text-accent transition-colors"
-                  >
-                    ❤️ <span>{post.likes}</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveCommentPost(activeCommentPost === post.id ? null : post.id)}
-                    className="flex items-center gap-2 text-gray-400 hover:text-primary transition-colors"
-                  >
-                    💬 <span>{post.comments.length}</span>
-                  </button>
-                </div>
-                <div className="text-xs text-gray-500">
-                  {post.type === 'ai' ? '🤖 AI Assistant' : '👤 Team Member'}
-                </div>
-              </div>
-
-              {/* Comments Section */}
-              {activeCommentPost === post.id && (
-                <div className="mt-4 pt-4 border-t border-tech-border">
-                  {/* Existing Comments */}
-                  {post.comments.map((comment) => (
-                    <div key={comment.id} className="mb-3 p-3 bg-tech-secondary bg-opacity-30 rounded-lg">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm text-primary">{comment.author}</span>
-                        <span className="text-xs text-gray-400">{comment.timestamp.toLocaleString()}</span>
-                      </div>
-                      <p className="text-sm text-gray-300">{comment.content}</p>
+                    {/* Post Content */}
+                    <div className="text-tech-foreground mb-6 leading-relaxed text-lg">
+                      {post.content}
                     </div>
-                  ))}
-                  
-                  {/* Add Comment */}
-                  <div className="flex gap-3 mt-4">
-                    <input
-                      type="text"
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Add a comment..."
-                      className="flex-1 px-3 py-2 bg-tech-input border border-tech-border rounded-lg text-tech-foreground focus:outline-none focus:ring-1 focus:ring-accent"
-                      onKeyPress={(e) => e.key === 'Enter' && handleAddComment(post.id)}
-                    />
-                    <button
-                      onClick={() => handleAddComment(post.id)}
-                      disabled={!newComment.trim()}
-                      className={`px-4 py-2 rounded-lg transition-colors ${
-                        !newComment.trim()
-                          ? 'bg-tech-secondary text-gray-400 cursor-not-allowed'
-                          : 'bg-accent hover:bg-accent-light text-white'
-                      }`}
-                    >
-                      💬
-                    </button>
+
+                    {/* Post Actions */}
+                    <div className="flex items-center justify-between pt-4 border-t border-tech-border">
+                      <div className="flex items-center gap-6">
+                        <button
+                          onClick={() => handleLike(post.id)}
+                          className="flex items-center gap-2 text-gray-400 hover:text-red-400 transition-colors duration-200 group"
+                        >
+                          <span className="text-xl group-hover:scale-110 transition-transform duration-200">❤️</span>
+                          <span className="font-medium">{post.likes}</span>
+                        </button>
+                        <button
+                          onClick={() => setActiveCommentPost(activeCommentPost === post.id ? null : post.id)}
+                          className="flex items-center gap-2 text-gray-400 hover:text-blue-400 transition-colors duration-200 group"
+                        >
+                          <span className="text-xl group-hover:scale-110 transition-transform duration-200">💬</span>
+                          <span className="font-medium">{post.comments.length}</span>
+                        </button>
+                      </div>
+                      <div className="text-xs text-gray-500 flex items-center gap-1">
+                        <span>{post.type === 'ai' ? '🤖 AI Assistant' : '👤 Team Member'}</span>
+                      </div>
+                    </div>
+
+                    {/* Comments Section */}
+                    {activeCommentPost === post.id && (
+                      <div className="mt-6 pt-4 border-t border-tech-border">
+                        {/* Existing Comments */}
+                        {post.comments.map((comment) => (
+                          <div key={comment.id} className="mb-4 p-4 bg-tech-secondary bg-opacity-30 rounded-xl">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-medium text-blue-400">{comment.author}</span>
+                              <span className="text-xs text-gray-400">{comment.timestamp.toLocaleString()}</span>
+                            </div>
+                            <p className="text-gray-300">{comment.content}</p>
+                          </div>
+                        ))}
+                        
+                        {/* Add Comment */}
+                        <div className="flex gap-3 mt-4">
+                          <input
+                            type="text"
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            placeholder="Add a comment..."
+                            className="flex-1 px-4 py-3 bg-tech-input border border-tech-border rounded-xl text-tech-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            onKeyPress={(e) => e.key === 'Enter' && handleAddComment(post.id)}
+                          />
+                          <button
+                            onClick={() => handleAddComment(post.id)}
+                            disabled={!newComment.trim()}
+                            className={`px-6 py-3 rounded-xl transition-all duration-200 font-medium ${
+                              !newComment.trim()
+                                ? 'bg-tech-secondary text-gray-400 cursor-not-allowed'
+                                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-blue-500/25'
+                            }`}
+                          >
+                            💬
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
+              ))}
+            </div>
+
+            {/* Empty State */}
+            {filteredPosts.length === 0 && (
+              <div className="text-center py-16">
+                <div className="text-8xl mb-6">📭</div>
+                <h3 className="text-2xl font-medium text-gray-300 mb-3">No posts yet</h3>
+                <p className="text-gray-400 text-lg">
+                  {filter === 'all' 
+                    ? 'Be the first to share something with the team!'
+                    : `No ${filter === 'user' ? 'team updates' : 'AI insights'} available.`}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="xl:col-span-1">
+            <div className="space-y-6">
+              {/* Quick Actions */}
+              <div className="bg-tech-card rounded-xl shadow-tech overflow-hidden border border-tech-border">
+                <div className="h-1 bg-gradient-to-r from-green-500 to-blue-500"></div>
+                <div className="p-6">
+                  <h3 className="text-lg font-semibold mb-4 text-tech-foreground">Quick Actions</h3>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Message Sender', icon: '💬', color: 'from-blue-500 to-cyan-500' },
+                      { label: 'AI Tools', icon: '🤖', color: 'from-purple-500 to-pink-500' },
+                      { label: 'Analytics', icon: '📊', color: 'from-green-500 to-blue-500' },
+                      { label: 'Tutorials', icon: '📚', color: 'from-orange-500 to-red-500' }
+                    ].map((action, index) => (
+                      <button
+                        key={index}
+                        className={`w-full p-3 rounded-xl bg-gradient-to-r ${action.color} text-white font-medium hover:shadow-lg transition-all duration-200 hover:scale-105`}
+                      >
+                        <span className="mr-2">{action.icon}</span>
+                        {action.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Team Status */}
+              <div className="bg-tech-card rounded-xl shadow-tech overflow-hidden border border-tech-border">
+                <div className="h-1 bg-gradient-to-r from-yellow-500 to-orange-500"></div>
+                <div className="p-6">
+                  <h3 className="text-lg font-semibold mb-4 text-tech-foreground">Team Status</h3>
+                  <div className="space-y-3">
+                    {[
+                      { name: 'Matt', status: 'Online', color: 'bg-green-500' },
+                      { name: 'Sean', status: 'Online', color: 'bg-green-500' },
+                      { name: 'Jon', status: 'Away', color: 'bg-yellow-500' },
+                      { name: 'Jose', status: 'Offline', color: 'bg-gray-500' }
+                    ].map((member, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-3 h-3 rounded-full ${member.color}`}></div>
+                          <span className="text-tech-foreground">{member.name}</span>
+                        </div>
+                        <span className="text-xs text-gray-400">{member.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Today's Tip */}
+              <div className="bg-tech-card rounded-xl shadow-tech overflow-hidden border border-tech-border">
+                <div className="h-1 bg-gradient-to-r from-purple-500 to-pink-500"></div>
+                <div className="p-6">
+                  <h3 className="text-lg font-semibold mb-4 text-tech-foreground">💡 Daily Insight</h3>
+                  <p className="text-gray-300 text-sm leading-relaxed">
+                    "SEO success isn't about gaming Google's algorithm—it's about understanding your customers so well that Google can't help but send them to you."
+                  </p>
+                  <div className="mt-4 text-xs text-gray-400">
+                    — TRD Marketing Philosophy
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Empty State */}
-      {filteredPosts.length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">📭</div>
-          <h3 className="text-xl font-medium text-gray-300 mb-2">No posts yet</h3>
-          <p className="text-gray-400">
-            {filter === 'all' 
-              ? 'Be the first to share something with the team!'
-              : `No ${filter === 'user' ? 'team updates' : 'AI insights'} available.`}
-          </p>
         </div>
-      )}
+      </div>
     </div>
   );
 };
