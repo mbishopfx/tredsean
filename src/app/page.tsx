@@ -2069,17 +2069,7 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
             <span className="ml-3">Campaign Analytics</span>
             <span className="ml-auto bg-purple-600 text-white text-xs px-2 py-0.5 rounded-full">NEW</span>
           </div>
-          <div 
-            className={`flex items-center px-4 py-3 cursor-pointer ${
-              activeTab === 'voice-dialer' 
-                ? 'bg-gradient text-white' 
-                : 'hover:bg-tech-secondary transition-colors duration-200'
-            }`}
-            onClick={() => setActiveTab('voice-dialer')}
-          >
-            <PhoneIcon />
-            <span className="ml-3">Voice Dialer</span>
-          </div>
+{/* Voice Dialer removed */}
           <div 
             className={`flex items-center px-4 py-3 cursor-pointer ${
               activeTab === 'stats' 
@@ -3060,7 +3050,8 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
           </div>
         </div>
 
-        <div className={activeTab === 'voice-dialer' ? 'block' : 'hidden'}>
+        {/* Voice Dialer content removed */}
+        <div className="hidden">
           <div className="p-8">
             <div className="flex items-center mb-6">
               <h2 className="text-2xl font-bold">Voice Dialer</h2>

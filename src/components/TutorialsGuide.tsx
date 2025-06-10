@@ -41,12 +41,6 @@ const TutorialsGuide: React.FC<TutorialsGuideProps> = ({ isActive }) => {
       title: 'GBP Audit Tool',
       icon: '🏢',
       description: 'Google Business Profile audits'
-    },
-    {
-      id: 'voice-dialer',
-      title: 'Voice Dialer',
-      icon: '☎️',
-      description: 'Make calls through the platform'
     }
   ];
 
@@ -282,58 +276,7 @@ const TutorialsGuide: React.FC<TutorialsGuideProps> = ({ isActive }) => {
     </div>
   );
 
-  const renderVoiceDialerTutorial = () => (
-    <div className="space-y-6">
-      <div className="bg-red-900 bg-opacity-20 border border-red-500 rounded-md p-4">
-        <h4 className="text-red-400 font-medium mb-2">Voice Calling System</h4>
-        <p className="text-red-300 text-sm">
-          Make calls directly through the platform with integrated CRM and note-taking.
-        </p>
-      </div>
 
-      <div className="space-y-4">
-        <h4 className="font-semibold text-tech-foreground">Making Calls:</h4>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-tech-secondary bg-opacity-30 p-4 rounded-md">
-            <h5 className="font-medium text-green-400 mb-2">Twilio Integration</h5>
-            <ul className="text-gray-300 text-sm space-y-1">
-              <li>• Direct browser calling</li>
-              <li>• Automatic call logging</li>
-              <li>• Real-time call status</li>
-              <li>• Call recording options</li>
-            </ul>
-          </div>
-
-          <div className="bg-tech-secondary bg-opacity-30 p-4 rounded-md">
-            <h5 className="font-medium text-blue-400 mb-2">Manual Mode</h5>
-            <ul className="text-gray-300 text-sm space-y-1">
-              <li>• Use your phone</li>
-              <li>• Track call outcomes</li>
-              <li>• Add detailed notes</li>
-              <li>• Update CRM records</li>
-            </ul>
-          </div>
-        </div>
-
-        <div className="bg-tech-secondary bg-opacity-30 p-4 rounded-md">
-          <h5 className="font-medium text-tech-foreground mb-2">Call Management Features:</h5>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-gray-300">• Lead status updates</p>
-              <p className="text-gray-300">• Follow-up scheduling</p>
-              <p className="text-gray-300">• Pipeline management</p>
-            </div>
-            <div>
-              <p className="text-gray-300">• Call outcome tracking</p>
-              <p className="text-gray-300">• Notes and recordings</p>
-              <p className="text-gray-300">• Activity logging</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 
   const renderContent = () => {
     switch (activeSection) {
@@ -342,7 +285,6 @@ const TutorialsGuide: React.FC<TutorialsGuideProps> = ({ isActive }) => {
       case 'drip-campaigns': return renderDripCampaignsTutorial();
       case 'ai-tools': return renderAIToolsTutorial();
       case 'gbp-audit': return renderGBPAuditTutorial();
-      case 'voice-dialer': return renderVoiceDialerTutorial();
       default: return renderOverviewTutorial();
     }
   };
