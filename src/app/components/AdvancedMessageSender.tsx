@@ -345,6 +345,12 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
   const [showReport, setShowReport] = useState(false);
   const [campaignId, setCampaignId] = useState<string>('');
   const [trackingEnabled, setTrackingEnabled] = useState(true);
+  
+  // Standalone message functionality
+  const [standaloneMode, setStandaloneMode] = useState(false);
+  const [singlePhone, setSinglePhone] = useState('');
+  const [singleMessage, setSingleMessage] = useState('');
+  const [isSendingSingle, setIsSendingSingle] = useState(false);
 
   const filteredVariables = AVAILABLE_VARIABLES.filter(variable => {
     const matchesCategory = selectedCategory === 'All' || variable.category === selectedCategory;
@@ -352,6 +358,30 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
                          variable.description.toLowerCase().includes(variableSearch.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
+  // Phone number formatting function
+  const formatPhoneNumber = (phone: string): string => {
+    // Remove all non-numeric characters
+    const cleaned = phone.replace(/\D/g, '');
+    
+    // If it starts with 1 and is 11 digits, keep as is
+    if (cleaned.length === 11 && cleaned.startsWith('1')) {
+      return `+${cleaned}`;
+    }
+    
+    // If it's 10 digits, add US country code
+    if (cleaned.length === 10) {
+      return `+1${cleaned}`;
+    }
+    
+    // If it already has a country code but no +, add it
+    if (cleaned.length > 10 && !cleaned.startsWith('+')) {
+      return `+${cleaned}`;
+    }
+    
+    // Return the cleaned version with + if it's not already there
+    return cleaned.startsWith('+') ? cleaned : `+${cleaned}`;
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -476,6 +506,78 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
     preview = preview.replace(/{day_of_week}/g, new Date().toLocaleString('default', { weekday: 'long' }));
     
     return preview;
+  };
+
+  const handleSendSingleMessage = async () => {
+    if (!singleMessage.trim() || !singlePhone.trim()) {
+      setSendStatus({
+        success: false,
+        message: 'Please enter both phone number and message'
+      });
+      return;
+    }
+
+    setIsSendingSingle(true);
+    
+    try {
+      // Format the phone number
+      const formattedPhone = formatPhoneNumber(singlePhone);
+      
+      // Validate phone number format
+      if (formattedPhone.length < 11 || !formattedPhone.startsWith('+')) {
+        setSendStatus({
+          success: false,
+          message: 'Invalid phone number format. Please enter a valid phone number.'
+        });
+        setIsSendingSingle(false);
+        return;
+      }
+
+      const response = await fetch('/api/sms/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phoneNumbers: [formattedPhone],
+          message: singleMessage,
+          provider: 'personal',
+          credentialsProvider: 'smsgateway',
+          contactData: [{ phone: formattedPhone }],
+          campaignId: `single_${Date.now()}`
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        setSendStatus({
+          success: true,
+          message: `✅ Message sent successfully to ${formattedPhone}`
+        });
+        setSingleMessage('');
+        setSinglePhone('');
+        
+        // Log activity
+        logActivity('Single SMS Sent', {
+          phone: formattedPhone,
+          messageLength: singleMessage.length,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        setSendStatus({
+          success: false,
+          message: `❌ Failed to send message: ${data.error || 'Unknown error'}`
+        });
+      }
+    } catch (error: any) {
+      setSendStatus({
+        success: false,
+        message: `❌ Error sending message: ${error.message}`
+      });
+    } finally {
+      setIsSendingSingle(false);
+    }
   };
 
   const handleSendMessages = async () => {
@@ -664,13 +766,166 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
             AI-Powered Campaign Builder
           </div>
         </div>
+        
+        {/* Mode Toggle */}
+        <div className="flex items-center bg-tech-card rounded-lg p-1">
+          <button
+            onClick={() => setStandaloneMode(false)}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              !standaloneMode 
+                ? 'bg-primary text-white' 
+                : 'text-gray-400 hover:text-gray-300'
+            }`}
+          >
+            Mass Campaign
+          </button>
+          <button
+            onClick={() => setStandaloneMode(true)}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              standaloneMode 
+                ? 'bg-primary text-white' 
+                : 'text-gray-400 hover:text-gray-300'
+            }`}
+          >
+            Single Message
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Main Campaign Builder */}
-        <div className="xl:col-span-2 space-y-6">
-          {/* SMS Gateway Health Status */}
-          <SMSGatewayHealthChecker />
+      {standaloneMode ? (
+        /* Standalone Message Mode */
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2 space-y-6">
+            {/* SMS Gateway Health Status */}
+            <SMSGatewayHealthChecker />
+            
+            {/* Single Message Composer */}
+            <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-green-500 to-blue-500"></div>
+              <div className="p-6">
+                <h3 className="text-lg font-semibold mb-4 flex items-center">
+                  <svg className="w-5 h-5 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                  </svg>
+                  Send Single Message
+                </h3>
+                
+                {/* Phone Number Input */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="Enter phone number (e.g., 4176297373, +14176297373)"
+                    value={singlePhone}
+                    onChange={(e) => setSinglePhone(e.target.value)}
+                    className="w-full p-3 bg-tech-input border border-tech-border rounded-md text-tech-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <div className="text-xs text-gray-400 mt-1">
+                    Format will be automatically adjusted (US numbers supported)
+                    {singlePhone && (
+                      <span className="ml-2 text-green-400">
+                        → Will format to: {formatPhoneNumber(singlePhone)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Message Input */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Message
+                  </label>
+                  <textarea
+                    className="w-full min-h-[120px] p-3 bg-tech-input border border-tech-border rounded-md text-tech-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                    placeholder="Type your message here..."
+                    value={singleMessage}
+                    onChange={(e) => setSingleMessage(e.target.value)}
+                  />
+                  <div className="flex justify-between items-center mt-2 text-xs text-gray-400">
+                    <span>Characters: {singleMessage.length} / 1600</span>
+                    <span>Est. Cost: $0.0075</span>
+                  </div>
+                </div>
+                
+                {/* Send Button */}
+                <button
+                  onClick={handleSendSingleMessage}
+                  disabled={isSendingSingle || !singleMessage.trim() || !singlePhone.trim()}
+                  className={`w-full px-6 py-3 rounded-md flex items-center justify-center space-x-2 text-white font-medium ${
+                    isSendingSingle || !singleMessage.trim() || !singlePhone.trim()
+                      ? 'bg-tech-secondary cursor-not-allowed'
+                      : 'bg-gradient hover:shadow-primary'
+                  } transition-shadow duration-300`}
+                >
+                  {isSendingSingle ? (
+                    <>
+                      <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Sending...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                      <span>Send Message</span>
+                    </>
+                  )}
+                </button>
+                
+                {sendStatus && (
+                  <div className={`mt-4 p-3 rounded-md ${
+                    sendStatus.success 
+                      ? 'bg-green-900 bg-opacity-20 border border-green-500 text-green-400' 
+                      : 'bg-red-900 bg-opacity-20 border border-red-500 text-red-400'
+                  }`}>
+                    {sendStatus.message}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* Quick Templates Sidebar for Single Messages */}
+          <div className="space-y-6">
+            <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+              <div className="h-1 bg-gradient-accent"></div>
+              <div className="p-4">
+                <h3 className="text-lg font-semibold mb-4">Quick Templates</h3>
+                <div className="space-y-2">
+                  {[
+                    { name: 'Follow-up', template: 'Hi! Following up on our previous conversation. Is now a good time to discuss {topic}?' },
+                    { name: 'Introduction', template: 'Hello! This is {your_name} from {company}. I wanted to reach out about {service}. Quick call?' },
+                    { name: 'Appointment', template: 'Hi! This is a reminder about your appointment on {date} at {time}. Please confirm.' },
+                    { name: 'Thank You', template: 'Thank you for your time today! Please let me know if you have any questions.' }
+                  ].map((template, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSingleMessage(template.template)}
+                      className="w-full text-left p-3 bg-tech-secondary hover:bg-tech-border rounded transition-colors duration-200"
+                    >
+                      <div className="font-medium text-sm text-tech-foreground">{template.name}</div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {template.template.substring(0, 60)}...
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Mass Campaign Mode */
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {/* Main Campaign Builder */}
+          <div className="xl:col-span-2 space-y-6">
+            {/* SMS Gateway Health Status */}
+            <SMSGatewayHealthChecker />
           
           {/* Message Composer */}
           <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
@@ -1039,8 +1294,9 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
               </div>
             </div>
           )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 } 

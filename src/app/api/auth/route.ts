@@ -35,13 +35,29 @@ const TEAM_USERS = {
     }
   },
   'Josetrd': {
-    password: 'TeamUSA123!',
+    password: 'TeamElite123!',
     displayName: 'Jose',
     role: 'team_member',
     personalSMS: {
-      provider: 'smsdove',
-      token: '', // Jose's SMS Dove token (to be provided)
-      accountId: '' // Jose's SMS Dove account ID (to be provided)
+      provider: 'smsgateway',
+      email: '', // Jose's SMS Gateway email (to be provided)
+      password: '', // Jose's SMS Gateway password (to be provided)
+      cloudUsername: '', // Jose's cloud credentials (to be provided)
+      cloudPassword: '', // Jose's cloud credentials (to be provided)
+      endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
+    }
+  },
+  'Juantrd': {
+    password: 'TeamElite124!',
+    displayName: 'Juan',
+    role: 'team_member',
+    personalSMS: {
+      provider: 'smsgateway',
+      email: '', // Juan's SMS Gateway email (to be provided)
+      password: '', // Juan's SMS Gateway password (to be provided)
+      cloudUsername: '', // Juan's cloud credentials (to be provided)
+      cloudPassword: '', // Juan's cloud credentials (to be provided)
+      endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
     }
   },
   'Matttrd': {

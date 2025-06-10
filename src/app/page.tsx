@@ -16,6 +16,7 @@ import { TwilioBackupGuide } from './components/TwilioBackupGuide';
 import { AdvancedMessageSender } from './components/AdvancedMessageSender';
 import { SMSGatewayHealthChecker } from './components/SMSGatewayHealthChecker';
 import { CampaignHistory } from './components/CampaignHistory';
+import GateSMSSetupGuide from '../components/GateSMSSetupGuide';
 import { saveAiAnalysis, saveSeoAudit, saveActivityLog } from '../utils/auditStorage';
 
 // Create a loading component
@@ -2027,6 +2028,18 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
           </div>
           <div 
             className={`flex items-center px-4 py-3 cursor-pointer ${
+              activeTab === 'gatesms-setup' 
+                ? 'bg-gradient text-white' 
+                : 'hover:bg-tech-secondary transition-colors duration-200'
+            }`}
+            onClick={() => setActiveTab('gatesms-setup')}
+          >
+            <MessageIcon />
+            <span className="ml-3">GateSMS Setup</span>
+            <span className="ml-auto bg-gradient-accent text-white text-xs px-2 py-0.5 rounded-full">GUIDE</span>
+          </div>
+          <div 
+            className={`flex items-center px-4 py-3 cursor-pointer ${
               activeTab === 'sms-gateway-health' 
                 ? 'bg-gradient text-white' 
                 : 'hover:bg-tech-secondary transition-colors duration-200'
@@ -2160,6 +2173,10 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
 
         <div className={activeTab === 'twilio-backup' ? 'block' : 'hidden'}>
           <TwilioBackupGuide isActive={activeTab === 'twilio-backup'} />
+        </div>
+
+        <div className={activeTab === 'gatesms-setup' ? 'block' : 'hidden'}>
+          <GateSMSSetupGuide isActive={activeTab === 'gatesms-setup'} />
         </div>
 
         <div className={activeTab === 'sms-gateway-health' ? 'block' : 'hidden'}>

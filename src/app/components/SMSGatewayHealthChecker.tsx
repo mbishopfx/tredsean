@@ -6,9 +6,10 @@ interface HealthStatus {
   isConnected: boolean;
   accountActive: boolean;
   accountEmail?: string;
+  userDisplayName?: string;
   lastPing?: string;
   messagesRemaining?: number;
-  deviceStatus?: 'online' | 'offline' | 'unknown';
+  deviceStatus?: 'online' | 'offline' | 'unknown' | 'setup_needed';
   error?: string;
 }
 
@@ -28,7 +29,11 @@ export function SMSGatewayHealthChecker({ className = "" }: SMSGatewayHealthChec
   const checkSMSGatewayHealth = async () => {
     setChecking(true);
     try {
-      const response = await fetch('/api/sms-gateway/health-check', {
+      // Get current user information from localStorage
+      const username = localStorage.getItem('username');
+      const queryParam = username ? `?username=${username}` : '';
+      
+      const response = await fetch(`/api/sms-gateway/health-check${queryParam}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -41,7 +46,8 @@ export function SMSGatewayHealthChecker({ className = "" }: SMSGatewayHealthChec
         setHealthStatus({
           isConnected: data.isConnected || false,
           accountActive: data.accountActive || false,
-          accountEmail: data.accountEmail || 'sean@trurankdigital.com',
+          accountEmail: data.accountEmail || 'Not configured',
+          userDisplayName: data.userDisplayName || 'Unknown User',
           lastPing: data.lastPing || new Date().toISOString(),
           messagesRemaining: data.messagesRemaining || 'unlimited',
           deviceStatus: data.deviceStatus || 'online',
@@ -144,9 +150,10 @@ export function SMSGatewayHealthChecker({ className = "" }: SMSGatewayHealthChec
             <span className={`text-xs px-2 py-1 rounded-full ${
               healthStatus.deviceStatus === 'online' ? 'bg-green-900 bg-opacity-20 text-green-400' :
               healthStatus.deviceStatus === 'offline' ? 'bg-red-900 bg-opacity-20 text-red-400' :
+              healthStatus.deviceStatus === 'setup_needed' ? 'bg-yellow-900 bg-opacity-20 text-yellow-400' :
               'bg-gray-800 bg-opacity-20 text-gray-400'
             }`}>
-              Device {healthStatus.deviceStatus}
+              {healthStatus.deviceStatus === 'setup_needed' ? 'Setup Required' : `Device ${healthStatus.deviceStatus}`}
             </span>
           )}
         </div>
@@ -154,9 +161,16 @@ export function SMSGatewayHealthChecker({ className = "" }: SMSGatewayHealthChec
         {/* Detailed Status */}
         <div className="space-y-2 text-sm">
           <div className="flex justify-between items-center">
-            <span className="text-gray-400">Account:</span>
+            <span className="text-gray-400">User:</span>
             <span className="text-tech-foreground">
-              {healthStatus.accountEmail || 'Unknown'}
+              {healthStatus.userDisplayName || 'Unknown'}
+            </span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span className="text-gray-400">SMS Account:</span>
+            <span className="text-tech-foreground">
+              {healthStatus.accountEmail === 'Not configured' ? 'Not Setup' : healthStatus.accountEmail || 'Unknown'}
             </span>
           </div>
           
@@ -208,21 +222,35 @@ export function SMSGatewayHealthChecker({ className = "" }: SMSGatewayHealthChec
           </div>
         )}
 
-        {/* Only Sean's account should be active notice */}
-        {healthStatus.accountEmail && healthStatus.accountEmail !== 'sean@trurankdigital.com' && (
+        {/* Setup needed notice for users without credentials */}
+        {healthStatus.accountEmail === 'Not configured' && (
           <div className="mt-3 p-2 bg-yellow-900 bg-opacity-20 border border-yellow-500 rounded text-yellow-400 text-xs">
             <div className="flex items-start">
               <svg className="w-3 h-3 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
               </svg>
               <span>
-                Note: Only Sean's account should be active until cloud server setup is complete for your team.
+                SMS Gateway not configured for {healthStatus.userDisplayName}. Contact admin for setup or visit the "GateSMS Setup" tab for instructions.
+              </span>
+            </div>
+          </div>
+        )}
+        
+        {/* Account linking notice for users with Sean's credentials */}
+        {healthStatus.accountEmail === 'sean@trurankdigital.com' && healthStatus.userDisplayName !== 'Sean' && (
+          <div className="mt-3 p-2 bg-blue-900 bg-opacity-20 border border-blue-500 rounded text-blue-400 text-xs">
+            <div className="flex items-start">
+              <svg className="w-3 h-3 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
+              </svg>
+              <span>
+                {healthStatus.userDisplayName} is using Sean's SMS Gateway account for testing. Messages will be sent from Sean's phone.
               </span>
             </div>
           </div>
         )}
 
-        {/* Success message for Sean's account */}
+        {/* Success message for active accounts */}
         {healthStatus.isConnected && healthStatus.accountActive && healthStatus.accountEmail === 'sean@trurankdigital.com' && (
           <div className="mt-3 p-2 bg-green-900 bg-opacity-20 border border-green-500 rounded text-green-400 text-xs">
             <div className="flex items-start">
@@ -230,7 +258,7 @@ export function SMSGatewayHealthChecker({ className = "" }: SMSGatewayHealthChec
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
               </svg>
               <span>
-                ✓ SMS Gateway is healthy and ready for mass messaging campaigns.
+                ✓ SMS Gateway is healthy and ready for mass messaging campaigns for {healthStatus.userDisplayName}.
               </span>
             </div>
           </div>

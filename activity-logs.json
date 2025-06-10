@@ -1484,5 +1484,115 @@
       "username": "Seantrd",
       "displayName": "Sean"
     }
+  },
+  {
+    "timestamp": "2025-06-10T10:32:48.325Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-10T10:32:59.792Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-10T10:33:13.797Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-10T10:34:33.378Z",
+    "user": "Josetrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "team_member",
+      "username": "Josetrd",
+      "displayName": "Jose"
+    }
+  },
+  {
+    "timestamp": "2025-06-10T10:37:32.168Z",
+    "user": "Josetrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Josetrd",
+      "displayName": "Jose"
+    }
+  },
+  {
+    "timestamp": "2025-06-10T10:38:59.582Z",
+    "user": "Josetrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Josetrd",
+      "displayName": "Jose"
+    }
+  },
+  {
+    "timestamp": "2025-06-10T10:39:20.538Z",
+    "user": "Josetrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Josetrd",
+      "displayName": "Jose"
+    }
+  },
+  {
+    "timestamp": "2025-06-10T10:49:25.259Z",
+    "user": "Matttrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Matttrd",
+      "displayName": "Matt"
+    }
+  },
+  {
+    "timestamp": "2025-06-10T10:50:01.483Z",
+    "user": "Matttrd",
+    "action": "logout"
+  },
+  {
+    "timestamp": "2025-06-10T10:50:14.175Z",
+    "user": "Josetrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "team_member",
+      "username": "Josetrd",
+      "displayName": "Jose"
+    }
+  },
+  {
+    "timestamp": "2025-06-10T10:51:05.946Z",
+    "user": "Josetrd",
+    "action": "logout"
+  },
+  {
+    "timestamp": "2025-06-10T10:51:17.083Z",
+    "user": "Seantrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "admin",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
   }
 ]
