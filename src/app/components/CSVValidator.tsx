@@ -2,7 +2,67 @@
 
 // Force fresh deployment - CSV Lead Validator v1.0
 import React, { useState, useRef } from 'react';
-import { Upload, Download, CheckCircle, AlertTriangle, XCircle, FileText, Users, Mail, Phone, Building } from 'lucide-react';
+
+// Simple SVG Icons
+const UploadIcon = () => (
+  <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+  </svg>
+);
+
+const FileTextIcon = () => (
+  <svg className="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+  </svg>
+);
+
+const CheckCircleIcon = () => (
+  <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const AlertTriangleIcon = () => (
+  <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+  </svg>
+);
+
+const XCircleIcon = () => (
+  <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const DownloadIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+  </svg>
+);
+
+const UsersIcon = () => (
+  <svg className="w-6 h-6 text-primary mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+  </svg>
+);
+
+const PhoneIcon = () => (
+  <svg className="w-6 h-6 text-green-400 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+  </svg>
+);
+
+const BuildingIcon = () => (
+  <svg className="w-6 h-6 text-blue-400 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+  </svg>
+);
+
+const MailIcon = () => (
+  <svg className="w-6 h-6 text-purple-400 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+  </svg>
+);
 
 interface ValidationStats {
   totalRows: number;
@@ -94,10 +154,10 @@ export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
         console.error('Validation error:', result);
         setValidationResult({
           success: false,
-          action: mode,
+          action: mode === 'validate' ? 'validated' : 'fixed',
           validation: {
             isValid: false,
-            errors: [result.error || 'Unknown error occurred'],
+            errors: [(result as any).error || 'Unknown error occurred'],
             warnings: [],
             suggestions: [],
             stats: {
@@ -120,7 +180,7 @@ export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
       console.error('Error validating CSV:', error);
       setValidationResult({
         success: false,
-        action: mode,
+        action: mode === 'validate' ? 'validated' : 'fixed',
         validation: {
           isValid: false,
           errors: ['Failed to validate CSV file'],
@@ -173,7 +233,7 @@ export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
       {/* Header */}
       <div className="flex items-center space-x-3">
         <div className="p-2 bg-primary bg-opacity-20 rounded-lg">
-          <FileText className="w-6 h-6 text-primary" />
+          <FileTextIcon />
         </div>
         <div>
           <h3 className="text-lg font-semibold text-tech-foreground">CSV Lead Validator</h3>
@@ -191,7 +251,7 @@ export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
           onDragOver={(e) => e.preventDefault()}
           onClick={() => fileInputRef.current?.click()}
         >
-          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <UploadIcon />
           <p className="text-tech-foreground font-medium mb-2">
             Drop your CSV file here or click to browse
           </p>
@@ -213,7 +273,7 @@ export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
         <div className="bg-tech-input border border-tech-border rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <FileText className="w-5 h-5 text-primary" />
+              <FileTextIcon />
               <div>
                 <p className="text-tech-foreground font-medium">{file.name}</p>
                 <p className="text-sm text-gray-400">
@@ -253,11 +313,11 @@ export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
           }`}>
             <div className="flex items-center space-x-3">
               {validationResult.readyForCampaign ? (
-                <CheckCircle className="w-6 h-6 text-green-400" />
+                <CheckCircleIcon />
               ) : validationResult.validation.isValid ? (
-                <AlertTriangle className="w-6 h-6 text-yellow-400" />
+                <AlertTriangleIcon />
               ) : (
-                <XCircle className="w-6 h-6 text-red-400" />
+                <XCircleIcon />
               )}
               <div>
                 <p className="font-semibold text-tech-foreground">
@@ -283,7 +343,7 @@ export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
           {/* Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-tech-input border border-tech-border rounded-lg p-4 text-center">
-              <Users className="w-6 h-6 text-primary mx-auto mb-2" />
+              <UsersIcon />
               <p className="text-2xl font-bold text-tech-foreground">
                 {validationResult.validation.stats.totalRows}
               </p>
@@ -291,7 +351,7 @@ export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
             </div>
             
             <div className="bg-tech-input border border-tech-border rounded-lg p-4 text-center">
-              <Phone className="w-6 h-6 text-green-400 mx-auto mb-2" />
+              <PhoneIcon />
               <p className="text-2xl font-bold text-tech-foreground">
                 {validationResult.validation.stats.mobileNumbers}
               </p>
@@ -299,7 +359,7 @@ export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
             </div>
             
             <div className="bg-tech-input border border-tech-border rounded-lg p-4 text-center">
-              <Building className="w-6 h-6 text-blue-400 mx-auto mb-2" />
+              <BuildingIcon />
               <p className="text-2xl font-bold text-tech-foreground">
                 {validationResult.validation.stats.companiesFound}
               </p>
@@ -307,7 +367,7 @@ export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
             </div>
             
             <div className="bg-tech-input border border-tech-border rounded-lg p-4 text-center">
-              <Mail className="w-6 h-6 text-purple-400 mx-auto mb-2" />
+              <MailIcon />
               <p className="text-2xl font-bold text-tech-foreground">
                 {validationResult.validation.stats.emailsFound}
               </p>
@@ -394,7 +454,7 @@ export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
                 disabled={isFixing}
                 className="flex items-center space-x-2 px-6 py-3 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                <CheckCircle className="w-4 h-4" />
+                <CheckCircleIcon />
                 <span>{isFixing ? 'Fixing...' : 'Fix & Clean CSV'}</span>
               </button>
             )}
@@ -404,7 +464,7 @@ export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
                 onClick={downloadCleanedCSV}
                 className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
               >
-                <Download className="w-4 h-4" />
+                <DownloadIcon />
                 <span>Download Cleaned CSV</span>
               </button>
             )}
