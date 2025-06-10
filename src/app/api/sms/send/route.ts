@@ -96,15 +96,17 @@ export async function POST(request: NextRequest) {
               try {
                 const response = await fetch(endpoint, {
                   method: 'POST',
-                                   headers: {
+                  headers: {
                    'Content-Type': 'application/json',
                    'Authorization': credentials.provider === 'smsgateway' && credentials.email === 'sean@trurankdigital.com' 
                      ? `Basic ${Buffer.from('AUZNLR:mpx-bhqzhm8bvg').toString('base64')}`
                      : `Basic ${Buffer.from(credentials.email + ':' + credentials.password).toString('base64')}`
                  },
-                                   body: JSON.stringify({
+                  body: JSON.stringify({
                    message: message,
-                   phoneNumbers: [formattedPhone]
+                   phoneNumbers: [formattedPhone],
+                   store_sent_messages: true,  // Ensure messages appear in phone's conversation history
+                   sim: 1  // Use primary SIM
                  }),
                   signal: AbortSignal.timeout(5000) // 5 second timeout
                 });

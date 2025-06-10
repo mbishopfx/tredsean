@@ -667,73 +667,116 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
         });
       }
 
-      // Process messages in batches for better tracking
-      const batchSize = 10;
+      // Send messages one by one sequentially (like single messages)
       let totalSuccessful = 0;
       let totalFailed = 0;
       const details: any[] = [];
 
-      for (let i = 0; i < phoneNumbers.length; i += batchSize) {
-        const batch = phoneNumbers.slice(i, i + batchSize);
-        const batchContactData = contactData.slice(i, i + batchSize);
+      // Process each contact individually, just like single messages
+      for (let i = 0; i < phoneNumbers.length; i++) {
+        const phone = phoneNumbers[i];
+        const contact = contactData[i] || { phone };
+        
+        // Format phone number exactly like single messages
+        const formattedPhone = formatPhoneNumber(phone);
+        
+        // Personalize message for this specific contact (using same logic as generatePreview)
+        let personalizedMessage = messageText;
+        
+        // Replace variables with actual contact data (dynamic field mapping)
+        Object.keys(contact).forEach(key => {
+          const regex = new RegExp(`{${key}}`, 'g');
+          personalizedMessage = personalizedMessage.replace(regex, contact[key] || "");
+        });
+        
+        // Also try common field variations for better compatibility
+        const fieldMappings = {
+          'name': ['name', 'first_name', 'firstname', 'full_name', 'fullname'],
+          'company': ['company', 'company_name', 'organization', 'business', 'business_name'],
+          'email': ['email', 'email_address', 'e_mail'],
+          'title': ['title', 'job_title', 'position', 'role'],
+          'location': ['location', 'city', 'address', 'state'],
+          'phone': ['phone', 'mobile', 'cell', 'phone_number']
+        };
+        
+        Object.entries(fieldMappings).forEach(([variable, possibleFields]) => {
+          const regex = new RegExp(`{${variable}}`, 'g');
+          for (const field of possibleFields) {
+            if (contact[field]) {
+              personalizedMessage = personalizedMessage.replace(regex, contact[field]);
+              break;
+            }
+          }
+        });
+        
+        // Replace system variables
+        personalizedMessage = personalizedMessage.replace(/{date}/g, new Date().toLocaleDateString());
+        personalizedMessage = personalizedMessage.replace(/{time}/g, new Date().toLocaleTimeString());
+        personalizedMessage = personalizedMessage.replace(/{current_month}/g, new Date().toLocaleString('default', { month: 'long' }));
+        personalizedMessage = personalizedMessage.replace(/{current_year}/g, new Date().getFullYear().toString());
+        personalizedMessage = personalizedMessage.replace(/{day_of_week}/g, new Date().toLocaleString('default', { weekday: 'long' }));
+        
+        // Set phone number for {phone} variable
+        personalizedMessage = personalizedMessage.replace(/{phone}/g, formattedPhone);
+        
+        console.log(`📤 Sending message ${i + 1}/${phoneNumbers.length} to ${formattedPhone}...`);
+        console.log(`Contact data:`, contact);
+        console.log(`Original message:`, messageText);
+        console.log(`Personalized message:`, personalizedMessage);
         
         try {
+          // Send exactly like a single message
           const response = await fetch('/api/sms/send', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              phoneNumbers: batch,
-              message: messageText,
+              phoneNumbers: [formattedPhone],
+              message: personalizedMessage,
               provider: 'personal',
               credentials: transformedCredentials,
-              contactData: batchContactData,
-              campaignId: newCampaignId
+              contactData: [{ phone: formattedPhone }],
+              campaignId: `single_${Date.now()}_${i}` // Make each look like a single message
             }),
           });
 
           const data = await response.json();
           
           if (response.ok) {
-            totalSuccessful += batch.length;
-            
-            // Track individual message success
-            batch.forEach((phone, index) => {
-              details.push({
-                phone,
-                status: 'sent',
-                timestamp: new Date().toISOString(),
-                messagePreview: generatePreview().substring(0, 50) + '...',
-                contact: batchContactData[index] || { phone }
-              });
+            totalSuccessful++;
+            details.push({
+              phone: formattedPhone,
+              status: 'sent',
+              timestamp: new Date().toISOString(),
+              messagePreview: personalizedMessage.substring(0, 50) + '...',
+              contact: contact
             });
+            console.log(`✅ Message ${i + 1} sent successfully to ${formattedPhone}`);
           } else {
-            totalFailed += batch.length;
-            batch.forEach((phone, index) => {
-              details.push({
-                phone,
-                status: 'failed',
-                error: data.error || 'Unknown error',
-                timestamp: new Date().toISOString(),
-                contact: batchContactData[index] || { phone }
-              });
+            totalFailed++;
+            details.push({
+              phone: formattedPhone,
+              status: 'failed',
+              error: data.error || 'Unknown error',
+              timestamp: new Date().toISOString(),
+              contact: contact
             });
+            console.log(`❌ Message ${i + 1} failed to ${formattedPhone}: ${data.error || 'Unknown error'}`);
           }
         } catch (error: any) {
-          totalFailed += batch.length;
-          batch.forEach((phone, index) => {
-            details.push({
-              phone,
-              status: 'failed',
-              error: error.message,
-              timestamp: new Date().toISOString(),
-              contact: batchContactData[index] || { phone }
-            });
+          totalFailed++;
+          details.push({
+            phone: formattedPhone,
+            status: 'failed',
+            error: error.message,
+            timestamp: new Date().toISOString(),
+            contact: contact
           });
+          console.log(`❌ Message ${i + 1} error to ${formattedPhone}: ${error.message}`);
         }
 
-        // Update report in real-time
+        // Update report in real-time after each message
         const updatedReport = {
           ...report,
           successful: totalSuccessful,
@@ -745,9 +788,9 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
         };
         setCampaignReport(updatedReport);
 
-        // Small delay between batches
-        if (i + batchSize < phoneNumbers.length) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+        // Small delay between messages (like typing delay)
+        if (i < phoneNumbers.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay between messages
         }
       }
 
@@ -769,19 +812,20 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
       setSendStatus({
         success: totalFailed === 0,
         message: totalFailed === 0 
-          ? `✅ Campaign completed! ${totalSuccessful}/${phoneNumbers.length} messages sent successfully`
-          : `⚠️ Campaign completed with issues: ${totalSuccessful} sent, ${totalFailed} failed`
+          ? `✅ All messages sent! ${totalSuccessful}/${phoneNumbers.length} messages delivered successfully`
+          : `⚠️ Campaign completed: ${totalSuccessful} sent successfully, ${totalFailed} failed`
       });
       
       setShowReport(true);
       
-      logActivity('mass_sms_campaign', {
+      logActivity('sequential_sms_campaign', {
         campaignId: newCampaignId,
         total: phoneNumbers.length,
         successful: totalSuccessful,
         failed: totalFailed,
         messageLength: messageText.length,
-        variablesUsed: messageText.match(/{[^}]+}/g)?.length || 0
+        variablesUsed: messageText.match(/{[^}]+}/g)?.length || 0,
+        method: 'one_by_one'
       });
       
     } catch (error: any) {
