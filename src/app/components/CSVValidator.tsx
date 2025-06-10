@@ -1,5 +1,6 @@
 'use client';
 
+// Force fresh deployment - CSV Lead Validator v1.0
 import React, { useState, useRef } from 'react';
 import { Upload, Download, CheckCircle, AlertTriangle, XCircle, FileText, Users, Mail, Phone, Building } from 'lucide-react';
 

@@ -1704,5 +1704,15 @@
       "username": "Seantrd",
       "displayName": "Sean"
     }
+  },
+  {
+    "timestamp": "2025-06-10T11:17:12.153Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
   }
 ]
