@@ -20,14 +20,6 @@ interface Comment {
   timestamp: Date;
 }
 
-interface QuickStat {
-  label: string;
-  value: string;
-  change: string;
-  changeType: 'positive' | 'negative' | 'neutral';
-  icon: string;
-}
-
 const HomeFeed: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPost, setNewPost] = useState('');
@@ -55,38 +47,6 @@ const HomeFeed: React.FC = () => {
     const { username } = getCurrentUser();
     return username === 'Matttrd' || username === 'Jontrd' || username === 'Jessetrd';
   };
-
-  // Quick stats data
-  const quickStats: QuickStat[] = [
-    {
-      label: 'Team Members',
-      value: '8',
-      change: '+2 this month',
-      changeType: 'positive',
-      icon: '👥'
-    },
-    {
-      label: 'Active Campaigns',
-      value: '24',
-      change: '+6 this week',
-      changeType: 'positive',
-      icon: '📊'
-    },
-    {
-      label: 'Messages Sent',
-      value: '12.5K',
-      change: '+18% this month',
-      changeType: 'positive',
-      icon: '💬'
-    },
-    {
-      label: 'Success Rate',
-      value: '94.2%',
-      change: '+2.1% improved',
-      changeType: 'positive',
-      icon: '🎯'
-    }
-  ];
 
   // Load posts from localStorage
   useEffect(() => {
@@ -254,9 +214,9 @@ const HomeFeed: React.FC = () => {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-cyan-400 bg-clip-text text-transparent mb-2">
-                TRD Command Center
+                TRD Team Feed
               </h1>
-              <p className="text-gray-400 text-lg">Real-time team insights and AI-powered marketing intelligence</p>
+              <p className="text-gray-400 text-lg">Stay connected with your team and AI-powered marketing insights</p>
             </div>
             
             <div className="mt-4 lg:mt-0">
@@ -271,29 +231,6 @@ const HomeFeed: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Quick Stats Dashboard */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {quickStats.map((stat, index) => (
-              <div key={index} className="bg-tech-card rounded-xl shadow-tech overflow-hidden hover:shadow-xl transition-all duration-300 hover:transform hover:scale-105">
-                <div className="h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="text-3xl">{stat.icon}</div>
-                    <div className={`px-2 py-1 rounded-full text-xs ${
-                      stat.changeType === 'positive' ? 'bg-green-900 bg-opacity-30 text-green-400' :
-                      stat.changeType === 'negative' ? 'bg-red-900 bg-opacity-30 text-red-400' :
-                      'bg-yellow-900 bg-opacity-30 text-yellow-400'
-                    }`}>
-                      {stat.change}
-                    </div>
-                  </div>
-                  <div className="text-2xl font-bold text-tech-foreground mb-1">{stat.value}</div>
-                  <div className="text-gray-400 text-sm">{stat.label}</div>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
 
@@ -543,10 +480,12 @@ const HomeFeed: React.FC = () => {
                   <h3 className="text-lg font-semibold mb-4 text-tech-foreground">Team Status</h3>
                   <div className="space-y-3">
                     {[
-                      { name: 'Matt', status: 'Online', color: 'bg-green-500' },
-                      { name: 'Sean', status: 'Online', color: 'bg-green-500' },
+                      { name: 'Jose', status: 'Online', color: 'bg-green-500' },
+                      { name: 'Juan', status: 'Online', color: 'bg-green-500' },
                       { name: 'Jon', status: 'Away', color: 'bg-yellow-500' },
-                      { name: 'Jose', status: 'Offline', color: 'bg-gray-500' }
+                      { name: 'Jesse', status: 'Online', color: 'bg-green-500' },
+                      { name: 'Sean', status: 'Online', color: 'bg-green-500' },
+                      { name: 'Matt', status: 'Online', color: 'bg-green-500' }
                     ].map((member, index) => (
                       <div key={index} className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
