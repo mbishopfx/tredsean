@@ -52,23 +52,28 @@ interface FormattedLead {
   original_data: { [key: string]: string };
 }
 
-// Mapping rules for common CSV column variations
+// Enhanced field mappings based on the proven campaign formatter
 const FIELD_MAPPINGS = {
-  name: ['name', 'full_name', 'contact_name', 'lead_name', 'person_name'],
-  first_name: ['first_name', 'first name', 'fname', 'given_name', 'firstname'],
-  last_name: ['last_name', 'last name', 'lname', 'surname', 'lastname', 'family_name'],
-  company: ['company', 'company_name', 'company name', 'organization', 'business', 'firm'],
-  phone: ['phone', 'phone_number', 'mobile', 'cell', 'telephone', 'phone number', 'mobile phone', 'work direct phone', 'mobile phone'],
-  email: ['email', 'email_address', 'e-mail', 'mail', 'email address', 'primary email'],
+  name: ['name', 'first_name', 'full_name', 'contact_name', 'person_name', 'lead_name'],
+  first_name: ['first_name', 'firstname', 'fname', 'given_name'],
+  last_name: ['last_name', 'lastname', 'lname', 'surname', 'family_name'],
+  company: ['company', 'company_name', 'organization', 'business_name', 'account_name', 'business', 'firm'],
+  phone: ['phone', 'mobile_phone', 'cell_phone', 'phone_number', 'mobile', 'cell', 'telephone', 'work_direct_phone'],
+  email: ['email', 'email_address', 'work_email', 'business_email', 'e-mail', 'mail', 'primary_email'],
   title: ['title', 'job_title', 'position', 'role', 'designation'],
   city: ['city', 'location_city', 'town'],
   state: ['state', 'province', 'region', 'location_state'],
   country: ['country', 'nation', 'location_country'],
-  industry: ['industry', 'sector', 'business_type', 'vertical'],
-  website: ['website', 'url', 'company_website', 'web', 'site'],
-  employees: ['employees', '# employees', 'company_size', 'team_size', 'staff_count'],
-  revenue: ['revenue', 'annual_revenue', 'annual revenue', 'income', 'turnover'],
-  linkedin_url: ['linkedin_url', 'linkedin', 'person linkedin url', 'linkedin profile']
+  industry: ['industry', 'industry_type', 'sector', 'business_type', 'vertical'],
+  website: ['website', 'company_website', 'domain', 'website_url', 'url', 'web', 'site'],
+  employees: ['employees', 'company_size', 'employee_count', 'num_employees', '# employees', 'team_size', 'staff_count'],
+  revenue: ['revenue', 'annual_revenue', 'company_revenue', 'annual revenue', 'income', 'turnover'],
+  linkedin_url: ['linkedin', 'linkedin_url', 'person_linkedin_url', 'linkedin_profile'],
+  location: ['location', 'address', 'full_address'],
+  technologies: ['technologies', 'tech_stack', 'software_used'],
+  keywords: ['keywords', 'tags', 'interests'],
+  source: ['source', 'lead_source', 'data_source'],
+  confidence: ['confidence', 'accuracy_score', 'data_quality']
 };
 
 // Phone number validation and classification
@@ -104,69 +109,29 @@ function formatPhoneNumber(phone: string): string {
   return phone;
 }
 
+// Improved CSV parsing using the proven campaign formatter logic
 function parseCSV(csvText: string): LeadData[] {
   const lines = csvText.trim().split('\n');
   if (lines.length < 2) return [];
   
-  // Parse headers - handle quoted values
-  const headerLine = lines[0];
-  const headers = parseCSVLine(headerLine);
-  
-  const leads: LeadData[] = [];
+  // Parse headers - simple approach that works better
+  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+  const contacts: LeadData[] = [];
   
   for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue; // Skip empty lines
-    
-    const values = parseCSVLine(line);
-    
-    if (values.length >= headers.length - 2) { // Allow some flexibility
-      const lead: LeadData = {};
+    const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+    // More lenient - just need most of the headers to match
+    if (values.length >= headers.length) {
+      const contact: LeadData = {};
       headers.forEach((header, index) => {
-        const cleanHeader = header.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-        lead[cleanHeader] = values[index] || '';
+        const cleanHeader = header.toLowerCase().replace(/\s+/g, '_');
+        contact[cleanHeader] = values[index] || '';
       });
-      leads.push(lead);
+      contacts.push(contact);
     }
   }
   
-  return leads;
-}
-
-function parseCSVLine(line: string): string[] {
-  const values: string[] = [];
-  let current = '';
-  let inQuotes = false;
-  let i = 0;
-  
-  while (i < line.length) {
-    const char = line[i];
-    
-    if (char === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        // Escaped quote
-        current += '"';
-        i += 2;
-      } else {
-        // Toggle quote state
-        inQuotes = !inQuotes;
-        i++;
-      }
-    } else if (char === ',' && !inQuotes) {
-      // End of field
-      values.push(current.trim());
-      current = '';
-      i++;
-    } else {
-      current += char;
-      i++;
-    }
-  }
-  
-  // Add the last field
-  values.push(current.trim());
-  
-  return values;
+  return contacts;
 }
 
 function findBestFieldMatch(availableFields: string[], targetField: string): string | null {
@@ -183,11 +148,84 @@ function findBestFieldMatch(availableFields: string[], targetField: string): str
   return null;
 }
 
+// Improved standardization using campaign formatter logic
+function standardizeFields(contacts: LeadData[]): FormattedLead[] {
+  return contacts.map(contact => {
+    const standardized: any = { ...contact };
+    
+    // Map fields to standard names using proven logic
+    Object.entries(FIELD_MAPPINGS).forEach(([standardName, variants]) => {
+      if (!standardized[standardName]) {
+        for (const variant of variants) {
+          if (contact[variant]) {
+            standardized[standardName] = contact[variant];
+            break;
+          }
+        }
+      }
+    });
+    
+    // Clean phone numbers using campaign formatter logic
+    if (standardized.phone) {
+      const cleaned = standardized.phone.replace(/\D/g, '');
+      if (cleaned.length === 10) {
+        standardized.phone = `+1${cleaned}`;
+      } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
+        standardized.phone = `+${cleaned}`;
+      }
+    }
+    
+    // Ensure required fields exist
+    if (!standardized.name && standardized.first_name) {
+      standardized.name = standardized.first_name + (standardized.last_name ? ` ${standardized.last_name}` : '');
+    }
+    
+    // If no first/last but have full name, try to split
+    if (!standardized.first_name && !standardized.last_name && standardized.name) {
+      const nameParts = standardized.name.split(' ');
+      standardized.first_name = nameParts[0] || '';
+      standardized.last_name = nameParts.slice(1).join(' ') || '';
+    }
+    
+    // Create location string
+    const locationParts = [standardized.city, standardized.state, standardized.country].filter(part => part);
+    if (!standardized.location) {
+      standardized.location = locationParts.join(', ');
+    }
+    
+    const phoneType = detectPhoneType(standardized.phone);
+    
+    // Create formatted lead
+    const formattedLead: FormattedLead = {
+      name: standardized.name || '',
+      first_name: standardized.first_name || '',
+      last_name: standardized.last_name || '',
+      company: standardized.company || '',
+      phone: standardized.phone || '',
+      phone_type: phoneType,
+      email: standardized.email || '',
+      title: standardized.title || '',
+      city: standardized.city || '',
+      state: standardized.state || '',
+      country: standardized.country || '',
+      industry: standardized.industry || '',
+      website: standardized.website || '',
+      sms_eligible: phoneType === 'mobile',
+      location: standardized.location || '',
+      revenue: standardized.revenue || '',
+      employees: standardized.employees || '',
+      linkedin_url: standardized.linkedin_url || '',
+      original_data: { ...contact }
+    };
+    
+    return formattedLead;
+  });
+}
+
 function validateAndFormatLeads(leads: LeadData[]): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
   const suggestions: string[] = [];
-  const formattedLeads: FormattedLead[] = [];
   
   if (leads.length === 0) {
     errors.push('No data found in CSV file');
@@ -211,7 +249,10 @@ function validateAndFormatLeads(leads: LeadData[]): ValidationResult {
     };
   }
   
-  // Get available field names
+  // Standardize using proven logic
+  const formattedLeads = standardizeFields(leads);
+  
+  // Get available field names from original data
   const availableFields = Object.keys(leads[0]);
   const fieldMappings: { [key: string]: string | null } = {};
   
@@ -240,134 +281,55 @@ function validateAndFormatLeads(leads: LeadData[]): ValidationResult {
   const phonesSeen = new Set<string>();
   let duplicatePhones = 0;
   
-  // Process each lead
-  leads.forEach((lead, index) => {
+  // Process each lead using simpler validation like campaign formatter
+  formattedLeads.forEach((lead, index) => {
     const rowNumber = index + 2; // +2 for header row and 0-based index
     
-    // Extract phone number
-    const phoneField = fieldMappings.phone;
-    const rawPhone = phoneField ? lead[phoneField] : '';
-    const formattedPhone = rawPhone ? formatPhoneNumber(rawPhone) : '';
-    const phoneType = detectPhoneType(formattedPhone);
-    
-    if (!formattedPhone) {
+    if (!lead.phone) {
       warnings.push(`Row ${rowNumber}: No phone number found`);
-    } else if (phonesSeen.has(formattedPhone)) {
+    } else if (phonesSeen.has(lead.phone)) {
       duplicatePhones++;
-      warnings.push(`Row ${rowNumber}: Duplicate phone number ${formattedPhone}`);
+      warnings.push(`Row ${rowNumber}: Duplicate phone number ${lead.phone}`);
     } else {
-      phonesSeen.add(formattedPhone);
+      phonesSeen.add(lead.phone);
     }
     
     // Count phone types
-    if (phoneType === 'mobile') mobileCount++;
-    else if (phoneType === 'landline') landlineCount++;
+    if (lead.phone_type === 'mobile') mobileCount++;
+    else if (lead.phone_type === 'landline') landlineCount++;
     
-    // Extract name
-    let name = '';
-    let firstName = '';
-    let lastName = '';
+    if (lead.email) emailCount++;
+    if (lead.company) companyCount++;
+    if (lead.name) nameCount++;
     
-    if (fieldMappings.name) {
-      name = lead[fieldMappings.name] || '';
-    }
-    
-    if (fieldMappings.first_name) {
-      firstName = lead[fieldMappings.first_name] || '';
-    }
-    
-    if (fieldMappings.last_name) {
-      lastName = lead[fieldMappings.last_name] || '';
-    }
-    
-    // If no full name but have first/last, combine them
-    if (!name && (firstName || lastName)) {
-      name = `${firstName} ${lastName}`.trim();
-    }
-    
-    // If no first/last but have full name, try to split
-    if (!firstName && !lastName && name) {
-      const nameParts = name.split(' ');
-      firstName = nameParts[0] || '';
-      lastName = nameParts.slice(1).join(' ') || '';
-    }
-    
-    if (name) nameCount++;
-    
-    // Extract other fields
-    const company = fieldMappings.company ? lead[fieldMappings.company] || '' : '';
-    const email = fieldMappings.email ? lead[fieldMappings.email] || '' : '';
-    const title = fieldMappings.title ? lead[fieldMappings.title] || '' : '';
-    const city = fieldMappings.city ? lead[fieldMappings.city] || '' : '';
-    const state = fieldMappings.state ? lead[fieldMappings.state] || '' : '';
-    const country = fieldMappings.country ? lead[fieldMappings.country] || '' : '';
-    const industry = fieldMappings.industry ? lead[fieldMappings.industry] || '' : '';
-    const website = fieldMappings.website ? lead[fieldMappings.website] || '' : '';
-    const employees = fieldMappings.employees ? lead[fieldMappings.employees] || '' : '';
-    const revenue = fieldMappings.revenue ? lead[fieldMappings.revenue] || '' : '';
-    const linkedinUrl = fieldMappings.linkedin_url ? lead[fieldMappings.linkedin_url] || '' : '';
-    
-    if (email) emailCount++;
-    if (company) companyCount++;
-    
-    // Create location string
-    const locationParts = [city, state, country].filter(part => part);
-    const location = locationParts.join(', ');
-    
-    // Check if this row has minimum required data
-    const hasValidPhone = formattedPhone && phoneType !== 'unknown';
-    const hasIdentity = name || firstName || company;
+    // Simple validation - has phone and some identity
+    const hasValidPhone = lead.phone && lead.phone_type !== 'unknown';
+    const hasIdentity = lead.name || lead.first_name || lead.company;
     
     if (hasValidPhone && hasIdentity) {
       validRows++;
     }
-    
-    // Create formatted lead
-    const formattedLead: FormattedLead = {
-      name,
-      first_name: firstName,
-      last_name: lastName,
-      company,
-      phone: formattedPhone,
-      phone_type: phoneType,
-      email,
-      title,
-      city,
-      state,
-      country,
-      industry,
-      website,
-      sms_eligible: phoneType === 'mobile',
-      location,
-      revenue,
-      employees,
-      linkedin_url: linkedinUrl,
-      original_data: { ...lead }
-    };
-    
-    formattedLeads.push(formattedLead);
   });
   
-  // Generate availability analysis
+  // Generate availability analysis using campaign formatter approach
   const availableVariables: string[] = [];
   
-  // Check which variables have data
-  if (nameCount > 0) availableVariables.push('name', 'first_name', 'last_name');
-  if (companyCount > 0) availableVariables.push('company');
-  if (phonesSeen.size > 0) availableVariables.push('phone');
-  if (emailCount > 0) availableVariables.push('email');
-  if (fieldMappings.city && formattedLeads.some(l => l.city)) availableVariables.push('city', 'location');
-  if (fieldMappings.state && formattedLeads.some(l => l.state)) availableVariables.push('state');
-  if (fieldMappings.country && formattedLeads.some(l => l.country)) availableVariables.push('country');
-  if (fieldMappings.title && formattedLeads.some(l => l.title)) availableVariables.push('title');
-  if (fieldMappings.industry && formattedLeads.some(l => l.industry)) availableVariables.push('industry');
-  if (fieldMappings.website && formattedLeads.some(l => l.website)) availableVariables.push('website');
-  if (fieldMappings.revenue && formattedLeads.some(l => l.revenue)) availableVariables.push('revenue');
-  if (fieldMappings.employees && formattedLeads.some(l => l.employees)) availableVariables.push('employees');
-  if (fieldMappings.linkedin_url && formattedLeads.some(l => l.linkedin_url)) availableVariables.push('linkedin_url');
+  // Check which variables have data in a significant number of records
+  const threshold = Math.max(1, Math.floor(leads.length * 0.1)); // At least 10% of records
+  
+     Object.keys(FIELD_MAPPINGS).forEach(field => {
+     const count = formattedLeads.filter(lead => {
+       const value = lead[field as keyof FormattedLead];
+       return value && typeof value === 'string' && value.trim().length > 0;
+     }).length;
+    
+    if (count >= threshold) {
+      availableVariables.push(field);
+    }
+  });
   
   // Always available system variables
-  availableVariables.push('date', 'time', 'current_month', 'current_year', 'day_of_week');
+  availableVariables.push('current_date', 'current_time', 'current_month', 'current_year');
   
   // Analysis and suggestions
   if (mobileCount === 0) {
