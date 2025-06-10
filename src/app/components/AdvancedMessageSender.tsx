@@ -533,6 +533,26 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
         return;
       }
 
+      // Get Matt's SMS Gateway credentials from localStorage (set during login)
+      const storedCredentials = localStorage.getItem('personalSMSCredentials');
+      const personalSMSCredentials = storedCredentials ? JSON.parse(storedCredentials) : null;
+      
+      if (!personalSMSCredentials) {
+        setSendStatus({
+          success: false,
+          message: '❌ Personal SMS credentials not found. Please log in again.'
+        });
+        setIsSendingSingle(false);
+        return;
+      }
+
+      // Transform credentials for SMS Gateway compatibility
+      const transformedCredentials = personalSMSCredentials?.provider === 'smsgateway' ? {
+        ...personalSMSCredentials,
+        username: personalSMSCredentials.cloudUsername || personalSMSCredentials.username,
+        password: personalSMSCredentials.cloudPassword || personalSMSCredentials.password
+      } : personalSMSCredentials;
+
       const response = await fetch('/api/sms/send', {
         method: 'POST',
         headers: {
@@ -542,7 +562,7 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
           phoneNumbers: [formattedPhone],
           message: singleMessage,
           provider: 'personal',
-          credentialsProvider: 'smsgateway',
+          credentials: transformedCredentials,
           contactData: [{ phone: formattedPhone }],
           campaignId: `single_${Date.now()}`
         }),
@@ -612,6 +632,26 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
     setSendStatus(null);
     
     try {
+      // Get SMS Gateway credentials from localStorage
+      const storedCredentials = localStorage.getItem('personalSMSCredentials');
+      const personalSMSCredentials = storedCredentials ? JSON.parse(storedCredentials) : null;
+      
+      if (!personalSMSCredentials) {
+        setSendStatus({
+          success: false,
+          message: '❌ Personal SMS credentials not found. Please log in again.'
+        });
+        setIsSending(false);
+        return;
+      }
+
+      // Transform credentials for SMS Gateway compatibility
+      const transformedCredentials = personalSMSCredentials?.provider === 'smsgateway' ? {
+        ...personalSMSCredentials,
+        username: personalSMSCredentials.cloudUsername || personalSMSCredentials.username,
+        password: personalSMSCredentials.cloudPassword || personalSMSCredentials.password
+      } : personalSMSCredentials;
+
       // Send campaign tracking request first
       if (trackingEnabled) {
         await fetch('/api/campaigns/track', {
@@ -647,7 +687,7 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
               phoneNumbers: batch,
               message: messageText,
               provider: 'personal',
-              credentialsProvider: 'smsgateway',
+              credentials: transformedCredentials,
               contactData: batchContactData,
               campaignId: newCampaignId
             }),
