@@ -14,6 +14,7 @@ import GBPTool from '../components/GBPTool';
 import { AuditHistoryTab } from './components/AuditHistoryTab';
 import { TwilioBackupGuide } from './components/TwilioBackupGuide';
 import { AdvancedMessageSender } from './components/AdvancedMessageSender';
+import { CSVValidator } from './components/CSVValidator';
 import { SMSGatewayHealthChecker } from './components/SMSGatewayHealthChecker';
 import { CampaignHistory } from './components/CampaignHistory';
 import GateSMSSetupGuide from '../components/GateSMSSetupGuide';
@@ -2190,7 +2191,10 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
         </div>
         
         <div className={activeTab === 'message-sender' ? 'block' : 'hidden'}>
-          <AdvancedMessageSender isActive={activeTab === 'message-sender'} logActivity={logActivity} />
+          <div className="space-y-6">
+            <CSVValidator />
+            <AdvancedMessageSender isActive={activeTab === 'message-sender'} logActivity={logActivity} />
+          </div>
         </div>
 
         <div className={activeTab === 'twilio-backup' ? 'block' : 'hidden'}>
