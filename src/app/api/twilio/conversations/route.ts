@@ -136,16 +136,16 @@ export async function GET(request: NextRequest) {
 
     const client = new Twilio(accountSid, authToken);
     
-    // Calculate date range for retrieving messages (last 30 days by default)
+    // Calculate date range for retrieving messages (last 90 days instead of 30)
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 30);
+    startDate.setDate(endDate.getDate() - 90);
 
-    // Retrieve messages from Twilio
+    // Retrieve messages from Twilio with higher limit
     const messages = await client.messages.list({
       dateSentAfter: startDate,
       dateSentBefore: endDate,
-      limit: 1000 // Adjust as needed
+      limit: 5000 // Increased from 1000 to get more conversations
     });
 
     // If filterNumber provided, return just the messages for that number

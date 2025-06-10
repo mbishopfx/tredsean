@@ -12,6 +12,10 @@ import AccessDenied from '../components/AccessDenied';
 import HomeFeed from '../components/HomeFeed';
 import GBPTool from '../components/GBPTool';
 import { AuditHistoryTab } from './components/AuditHistoryTab';
+import { TwilioBackupGuide } from './components/TwilioBackupGuide';
+import { AdvancedMessageSender } from './components/AdvancedMessageSender';
+import { SMSGatewayHealthChecker } from './components/SMSGatewayHealthChecker';
+import { CampaignHistory } from './components/CampaignHistory';
 import { saveAiAnalysis, saveSeoAudit, saveActivityLog } from '../utils/auditStorage';
 
 // Create a loading component
@@ -356,6 +360,13 @@ function DashboardContent() {
         const twilioConversations = twilioData.conversations || [];
         const smsGatewayConversations = smsGatewayData.conversations || [];
         
+        console.log('📊 Raw API responses:', {
+          twilioData,
+          smsGatewayData,
+          twilioCount: twilioConversations.length,
+          smsGatewayCount: smsGatewayConversations.length
+        });
+        
         // Mark conversations with their provider
         const markedTwilioConversations = twilioConversations.map((conv: any) => ({
           ...conv,
@@ -366,7 +377,7 @@ function DashboardContent() {
         const markedSmsGatewayConversations = smsGatewayConversations.map((conv: any) => ({
           ...conv,
           provider: 'sms_gateway',
-          friendlyName: conv.friendlyName || `SMS Gateway - ${conv.participants[0]?.identity || 'Unknown'}`
+          friendlyName: conv.friendlyName || `SMS Gateway - ${conv.phoneNumber || 'Unknown'}`
         }));
         
         // Store them separately
@@ -1135,7 +1146,7 @@ function DashboardContent() {
             const markedSmsGatewayConversations = smsGatewayConversations.map((conv: any) => ({
               ...conv,
               provider: 'sms_gateway',
-              friendlyName: conv.friendlyName || `SMS Gateway - ${conv.participants[0]?.identity || 'Unknown'}`
+              friendlyName: conv.friendlyName || `SMS Gateway - ${conv.phoneNumber || 'Unknown'}`
             }));
             
             setTwilioConversations(markedTwilioConversations);
@@ -1992,25 +2003,51 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
           </div>
           <div 
             className={`flex items-center px-4 py-3 cursor-pointer ${
-              activeTab === 'message-editor' 
+              activeTab === 'message-sender' 
                 ? 'bg-gradient text-white' 
                 : 'hover:bg-tech-secondary transition-colors duration-200'
             }`}
-            onClick={() => setActiveTab('message-editor')}
+            onClick={() => setActiveTab('message-sender')}
           >
             <EditIcon />
-            <span className="ml-3">Message Editor</span>
+            <span className="ml-3">Message Sender</span>
+            <span className="ml-auto bg-gradient-accent text-white text-xs px-2 py-0.5 rounded-full">AI</span>
           </div>
           <div 
             className={`flex items-center px-4 py-3 cursor-pointer ${
-              activeTab === 'sms-chats' 
+              activeTab === 'twilio-backup' 
                 ? 'bg-gradient text-white' 
                 : 'hover:bg-tech-secondary transition-colors duration-200'
             }`}
-            onClick={() => setActiveTab('sms-chats')}
+            onClick={() => setActiveTab('twilio-backup')}
           >
             <MessageIcon />
-            <span className="ml-3">SMS Chats</span>
+            <span className="ml-3">Twilio Backup</span>
+            <span className="ml-auto bg-gradient-accent text-white text-xs px-2 py-0.5 rounded-full">GUIDE</span>
+          </div>
+          <div 
+            className={`flex items-center px-4 py-3 cursor-pointer ${
+              activeTab === 'sms-gateway-health' 
+                ? 'bg-gradient text-white' 
+                : 'hover:bg-tech-secondary transition-colors duration-200'
+            }`}
+            onClick={() => setActiveTab('sms-gateway-health')}
+          >
+            <StatsIcon />
+            <span className="ml-3">SMS Health Check</span>
+            <span className="ml-auto bg-gradient-accent text-white text-xs px-2 py-0.5 rounded-full">LIVE</span>
+          </div>
+          <div 
+            className={`flex items-center px-4 py-3 cursor-pointer ${
+              activeTab === 'campaign-history' 
+                ? 'bg-gradient text-white' 
+                : 'hover:bg-tech-secondary transition-colors duration-200'
+            }`}
+            onClick={() => setActiveTab('campaign-history')}
+          >
+            <ReportsIcon />
+            <span className="ml-3">Campaign Analytics</span>
+            <span className="ml-auto bg-purple-600 text-white text-xs px-2 py-0.5 rounded-full">NEW</span>
           </div>
           <div 
             className={`flex items-center px-4 py-3 cursor-pointer ${
@@ -2031,7 +2068,7 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
             }`}
             onClick={() => {
               const username = localStorage.getItem('username');
-              if (username === 'Matttrd' || username === 'Jontrd') {
+              if (username === 'Matttrd' || username === 'Jontrd' || username === 'Jessetrd') {
                 setActiveTab('stats');
               } else {
                 setShowAccessDenied(true);
@@ -2117,6 +2154,22 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
           <GBPTool />
         </div>
         
+        <div className={activeTab === 'message-sender' ? 'block' : 'hidden'}>
+          <AdvancedMessageSender isActive={activeTab === 'message-sender'} logActivity={logActivity} />
+        </div>
+
+        <div className={activeTab === 'twilio-backup' ? 'block' : 'hidden'}>
+          <TwilioBackupGuide isActive={activeTab === 'twilio-backup'} />
+        </div>
+
+        <div className={activeTab === 'sms-gateway-health' ? 'block' : 'hidden'}>
+          <SMSGatewayHealthChecker />
+        </div>
+
+        <div className={activeTab === 'campaign-history' ? 'block' : 'hidden'}>
+          <CampaignHistory isActive={activeTab === 'campaign-history'} />
+        </div>
+
         <div className={activeTab === 'message-editor' ? 'block' : 'hidden'}>
           <div className="p-8">
             <div className="flex items-center mb-6">

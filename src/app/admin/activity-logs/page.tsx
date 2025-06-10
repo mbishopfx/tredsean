@@ -38,7 +38,7 @@ export default function ActivityLogs() {
         }
         
         // Check if user is Matt or Jon
-        const isAuthorized = username === 'Matttrd' || username === 'Jontrd';
+        const isAuthorized = username === 'Matttrd' || username === 'Jontrd' || username === 'Jessetrd';
         setHasAccess(isAuthorized);
         
         if (!isAuthorized) {

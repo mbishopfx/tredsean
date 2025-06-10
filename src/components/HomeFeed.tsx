@@ -35,10 +35,10 @@ const HomeFeed: React.FC = () => {
     return { username, displayName };
   };
 
-  // Check if user can post (only Matttrd and Jontrd)
+  // Check if user can post (only Matttrd, Jontrd, and Jessetrd)
   const canPost = () => {
     const { username } = getCurrentUser();
-    return username === 'Matttrd' || username === 'Jontrd';
+    return username === 'Matttrd' || username === 'Jontrd' || username === 'Jessetrd';
   };
 
   // Load posts from localStorage

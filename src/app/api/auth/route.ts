@@ -17,7 +17,7 @@ const TEAM_USERS = {
   'Jessetrd': {
     password: 'Truerankprezzy123!',
     displayName: 'Jesse', 
-    role: 'team_member',
+    role: 'admin',
     personalSMS: {
       provider: 'smsdove',
       token: '', // Jesse's SMS Dove token (to be provided)

@@ -2,15 +2,15 @@
 
 /**
  * SMS Gateway Webhook Setup Script
- * Updates webhook URL to point to local development server for testing
+ * Updates webhook URL to point to correct production server
  */
 
 const https = require('https');
 const http = require('http');
 
-// Configuration
-const LOCAL_WEBHOOK_URL = 'http://localhost:3002/api/sms-gateway/webhook'; // Current dev server port
-const PRODUCTION_WEBHOOK_URL = 'https://smsdialer-bishopfxs-projects.vercel.app/api/sms-gateway/webhook';
+// Configuration - Updated to correct production URL
+const LOCAL_WEBHOOK_URL = 'http://localhost:3000/api/sms-gateway/webhook';
+const PRODUCTION_WEBHOOK_URL = 'https://smsdialer.vercel.app/api/sms-gateway/webhook'; // Updated to correct domain
 
 // SMS Gateway credentials
 const SMS_GATEWAY_API = 'https://api.sms-gate.app';
