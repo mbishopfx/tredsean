@@ -14,12 +14,18 @@ interface SMSResult {
 interface PersonalSMSCredentials {
   apiKey?: string;
   deviceId?: string;
-  provider: 'smsmobile' | 'smsdove';
+  provider: 'smsmobile' | 'smsdove' | 'smsgateway';
   token?: string;
   accountId?: string;
   accessCode?: string;
   clientId?: string;
   clientSecret?: string;
+  username?: string;
+  password?: string;
+  cloudUsername?: string;
+  cloudPassword?: string;
+  email?: string;
+  endpoint?: string;
 }
 
 export class SMSService {
@@ -97,6 +103,12 @@ export function validatePersonalSMSCredentials(credentials: PersonalSMSCredentia
   // For SMS Dove, we need token and accountId
   if (credentials.provider === 'smsdove') {
     return basicValid && !!credentials.token && !!credentials.accountId;
+  }
+  
+  // For SMS Gateway, we need cloudUsername/cloudPassword OR username/password
+  if (credentials.provider === 'smsgateway') {
+    return basicValid && ((!!credentials.cloudUsername && !!credentials.cloudPassword) || 
+                         (!!credentials.username && !!credentials.password));
   }
   
   return basicValid;

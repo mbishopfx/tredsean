@@ -925,12 +925,19 @@ function DashboardContent() {
         };
       });
 
+      // Transform credentials for SMS Gateway compatibility
+      const transformedCredentials = personalSMSCredentials?.provider === 'smsgateway' ? {
+        ...personalSMSCredentials,
+        username: personalSMSCredentials.cloudUsername || personalSMSCredentials.username,
+        password: personalSMSCredentials.cloudPassword || personalSMSCredentials.password
+      } : personalSMSCredentials;
+
       // Use SMS service with provider selection
-      const smsService = new SMSService(personalSMSCredentials);
+      const smsService = new SMSService(transformedCredentials);
       const results = await smsService.sendMessages(
         messages, 
         smsProvider === 'personal', 
-        personalSMSCredentials
+        transformedCredentials
       );
 
       // Count successful and failed messages
@@ -1066,6 +1073,13 @@ function DashboardContent() {
       const phoneNumber = selectedConversation.replace(/^(sms_gateway_|twilio_)/, '');
       
       if (smsProviderTab === 'sms-gateway') {
+        // Transform credentials for SMS Gateway compatibility
+        const transformedCredentials = personalSMSCredentials?.provider === 'smsgateway' ? {
+          ...personalSMSCredentials,
+          username: personalSMSCredentials.cloudUsername || personalSMSCredentials.username,
+          password: personalSMSCredentials.cloudPassword || personalSMSCredentials.password
+        } : personalSMSCredentials;
+
         // Use SMS Gateway - use the /api/sms/send endpoint with proper credentials
         response = await fetch('/api/sms/send', {
           method: 'POST',
@@ -1076,11 +1090,7 @@ function DashboardContent() {
             phoneNumbers: [phoneNumber],
             message: chatMessage,
             provider: 'personal',
-            credentials: {
-              provider: 'smsgateway',
-              email: 'sean@trurankdigital.com',
-              password: 'mpx-bhqzhm8bvg'
-            }
+            credentials: transformedCredentials
           }),
         });
       } else {

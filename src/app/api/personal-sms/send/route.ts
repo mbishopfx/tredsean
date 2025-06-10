@@ -17,6 +17,8 @@ interface PersonalSMSCredentials {
   // SMS Gateway credentials
   username?: string;
   password?: string;
+  cloudUsername?: string; // From auth system
+  cloudPassword?: string; // From auth system
   endpoint?: string; // for private instances
 }
 
@@ -99,13 +101,17 @@ export async function POST(request: NextRequest) {
             // SMS Gateway format - open source solution
             endpoint = credentials.endpoint || 'https://api.sms-gate.app/3rdparty/v1/message';
             
-            if (!credentials.username || !credentials.password) {
-              throw new Error('SMS Gateway requires username and password');
+            // Handle both credential formats: cloudUsername/cloudPassword OR username/password
+            const gatewayUsername = credentials.cloudUsername || credentials.username;
+            const gatewayPassword = credentials.cloudPassword || credentials.password;
+            
+            if (!gatewayUsername || !gatewayPassword) {
+              throw new Error('SMS Gateway requires username and password (or cloudUsername and cloudPassword)');
             }
             
             headers = {
               'Content-Type': 'application/json',
-              'Authorization': `Basic ${Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64')}`
+              'Authorization': `Basic ${Buffer.from(`${gatewayUsername as string}:${gatewayPassword as string}`).toString('base64')}`
             };
             
             requestBody = {
