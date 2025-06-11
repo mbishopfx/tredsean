@@ -409,8 +409,8 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
             const key = header.toLowerCase().replace(/\s+/g, '_');
             contact[key] = values[index];
             
-            // Try to identify phone number column
-            if ((key.includes('phone') || key.includes('mobile') || key.includes('cell')) && values[index]) {
+            // More specific phone number column detection - avoid phone_type
+            if (key === 'phone' || key === 'mobile' || key === 'cell' || key === 'phone_number' || key === 'mobile_phone' || key === 'cell_phone') {
               contact.phone = values[index];
             }
           }

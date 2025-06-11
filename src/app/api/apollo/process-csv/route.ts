@@ -112,9 +112,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No valid data found in CSV' }, { status: 400 });
     }
     
-    // Find phone number columns
+    // Find phone number columns - more specific to avoid phone_type
     const phoneColumns = Object.keys(leads[0]).filter(key => 
-      key.includes('phone') || key.includes('mobile') || key.includes('cell') || key.includes('number')
+      key === 'phone' || key === 'mobile' || key === 'cell' || 
+      key === 'phone_number' || key === 'mobile_phone' || key === 'cell_phone' ||
+      key === 'telephone' || key === 'work_direct_phone'
     );
     
     if (phoneColumns.length === 0) {
