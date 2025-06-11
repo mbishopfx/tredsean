@@ -541,8 +541,8 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
       let response;
       
       if (smsProvider === 'jon-device') {
-        // Use Jon's SMS Gateway device
-        response = await fetch('/api/sms-gateway/send-jon', {
+        // Use Jon's SMS Gateway device - simplified API
+        response = await fetch('/api/sms-gateway/send-jon-simple', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -754,8 +754,8 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
           let response;
           
           if (smsProvider === 'jon-device') {
-            // Use Jon's SMS Gateway device
-            response = await fetch('/api/sms-gateway/send-jon', {
+            // Use Jon's SMS Gateway device - simplified API
+            response = await fetch('/api/sms-gateway/send-jon-simple', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -830,9 +830,9 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
         };
         setCampaignReport(updatedReport);
 
-        // Small delay between messages (like typing delay)
+        // Longer delay between messages to avoid rate limiting
         if (i < phoneNumbers.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay between messages
+          await new Promise(resolve => setTimeout(resolve, 5000)); // 5 second delay between messages
         }
       }
 

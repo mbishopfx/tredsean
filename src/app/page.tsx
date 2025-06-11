@@ -932,7 +932,7 @@ function DashboardContent() {
       
       for (const msg of messages) {
         try {
-          const response = await fetch('/api/sms-gateway/send-jon', {
+          const response = await fetch('/api/sms-gateway/send-jon-simple', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -1097,7 +1097,7 @@ function DashboardContent() {
       if (smsProviderTab === 'sms-gateway') {
         // Use Jon's SMS Gateway device for all SMS Gateway conversations
         console.log('📱 Sending reply via Jon\'s device to:', phoneNumber);
-        response = await fetch('/api/sms-gateway/send-jon', {
+        response = await fetch('/api/sms-gateway/send-jon-simple', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
