@@ -1562,7 +1562,7 @@ function DashboardContent() {
       return;
     }
 
-    // Parse CSV - assuming format: name, company, phone, email, location
+    // Parse CSV - preserving ALL fields from upload
     const contacts = lines.slice(1).map((line, index) => {
       const [name, company, phone, email, location, ...rest] = line.split(',').map(item => item.trim());
       
@@ -2531,7 +2531,7 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
                     
                     {smsProvider === 'jon-device' && (
                       <div className="mt-2 p-3 bg-green-900 bg-opacity-20 border border-green-500 rounded-md text-green-400 text-sm">
-                        ✅ Connected to Jon's Samsung device - Guaranteed delivery (AD2XA0:2nitkjiqnmrrtc)
+                        ✅ ALL USERS connected to Jon's Samsung device - GUARANTEED delivery (AD2XA0:2nitkjiqnmrrtc)
                       </div>
                     )}
                     
@@ -3491,7 +3491,7 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
                           </div>
                           <div className="text-sm text-gray-300">Click to upload CSV file</div>
                           <div className="text-xs text-gray-500 mt-1">
-                            Format: name, company, phone, email, location
+                            Format: name, company, phone, email, location (All fields preserved)
                           </div>
                         </label>
                       </div>

@@ -95,6 +95,7 @@ function standardizeFields(contacts: CampaignContact[]): CampaignContact[] {
 function generateDripCampaignCSV(contacts: CampaignContact[]): string {
   if (contacts.length === 0) return '';
   
+  // PRESERVE ALL FIELDS - reliable processing with full data intact
   // Required headers for drip campaign
   const requiredHeaders = ['name', 'phone', 'company', 'email'];
   const allHeaders = new Set<string>();
@@ -113,7 +114,15 @@ function generateDripCampaignCSV(contacts: CampaignContact[]): string {
   const csvContent = [
     sortedHeaders.join(','),
     ...contacts.map(contact => 
-      sortedHeaders.map(header => `"${contact[header] || ''}"`).join(',')
+      sortedHeaders.map(header => {
+        const value = contact[header] || '';
+        const stringValue = String(value);
+        // Escape quotes and wrap in quotes if contains comma
+        const escaped = stringValue.replace(/"/g, '""');
+        return stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') 
+          ? `"${escaped}"` 
+          : escaped;
+      }).join(',')
     )
   ].join('\n');
   

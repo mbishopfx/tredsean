@@ -8,88 +8,88 @@ const TEAM_USERS: any = {
     role: 'admin',
     personalSMS: {
       provider: 'smsgateway',
-      email: 'sean@trurankdigital.com', // Links to Sean's account for testing
-      password: 'Croatia5376!',
-      cloudUsername: 'AUZNLR',
-      cloudPassword: 'mpx-bhqzhm8bvg',
+      email: 'jon@trurankdigital.com', // Jon's working SMS Gateway
+      password: 'WorkingDevice123!',
+      cloudUsername: 'AD2XA0',
+      cloudPassword: '2nitkjiqnmrrtc',
       endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
     }
   },
   'Matttrd': {
     password: 'admin123!',
-    displayName: 'Matt (Sean)',
+    displayName: 'Matt (Jon\'s Gateway)',
     role: 'admin',
     personalSMS: {
       provider: 'smsgateway',
-      email: 'sean@trurankdigital.com', // Links to Sean's account for testing
-      password: 'Croatia5376!',
-      cloudUsername: 'AUZNLR',
-      cloudPassword: 'mpx-bhqzhm8bvg',
+      email: 'jon@trurankdigital.com', // Using Jon's working device for ALL users
+      password: 'WorkingDevice123!',
+      cloudUsername: 'AD2XA0',
+      cloudPassword: '2nitkjiqnmrrtc',
       endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
     }
   },
   'Seantrd': {
     password: 'Croatia123!',
-    displayName: 'Sean',
+    displayName: 'Sean (Jon\'s Gateway)',
     role: 'admin',
     personalSMS: {
       provider: 'smsgateway',
-      email: 'sean@trurankdigital.com', // Original Sean's account
-      password: 'Croatia5376!',
-      cloudUsername: 'AUZNLR',
-      cloudPassword: 'mpx-bhqzhm8bvg',
+      email: 'jon@trurankdigital.com', // Using Jon's working device for ALL users
+      password: 'WorkingDevice123!',
+      cloudUsername: 'AD2XA0',
+      cloudPassword: '2nitkjiqnmrrtc',
       endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
     }
   },
   'Jessetrd': {
     password: 'Truerankprezzy123!',
-    displayName: 'Jesse',
+    displayName: 'Jesse (Jon\'s Gateway)',
     role: 'admin',
     personalSMS: {
       provider: 'smsgateway',
-      email: 'sean@trurankdigital.com', // Links to Sean's account for testing
-      password: 'Croatia5376!',
-      cloudUsername: 'AUZNLR',
-      cloudPassword: 'mpx-bhqzhm8bvg',
+      email: 'jon@trurankdigital.com', // Using Jon's working device for ALL users
+      password: 'WorkingDevice123!',
+      cloudUsername: 'AD2XA0',
+      cloudPassword: '2nitkjiqnmrrtc',
       endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
     }
   },
   'Dantrd': {
     password: 'TrdPakistan123!',
-    displayName: 'Dan',
+    displayName: 'Dan (Jon\'s Gateway)',
     role: 'team_member',
     personalSMS: {
       provider: 'smsgateway',
-      email: '', // To be provided
-      password: '',
-      cloudUsername: '',
-      cloudPassword: '',
+      email: 'jon@trurankdigital.com', // Using Jon's working device for ALL users
+      password: 'WorkingDevice123!',
+      cloudUsername: 'AD2XA0',
+      cloudPassword: '2nitkjiqnmrrtc',
       endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
     }
   },
   'Josetrd': {
     password: 'TeamElite123!',
-    displayName: 'Jose',
+    displayName: 'Jose (Jon\'s Gateway)',
     role: 'team_member',
     personalSMS: {
       provider: 'smsgateway',
-      email: '', // To be provided
-      password: '',
-      cloudUsername: '',
-      cloudPassword: '',
+      email: 'jon@trurankdigital.com', // Using Jon's working device for ALL users
+      password: 'WorkingDevice123!',
+      cloudUsername: 'AD2XA0',
+      cloudPassword: '2nitkjiqnmrrtc',
       endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
     }
   },
   'Juantrd': {
     password: 'TeamElite124!',
-    displayName: 'Juan',
+    displayName: 'Juan (Jon\'s Gateway)',
     role: 'team_member',
     personalSMS: {
       provider: 'smsgateway',
-      email: '', // To be provided
-      password: '',
-      cloudUsername: '',
-      cloudPassword: '',
+      email: 'jon@trurankdigital.com', // Using Jon's working device for ALL users
+      password: 'WorkingDevice123!',
+      cloudUsername: 'AD2XA0',
+      cloudPassword: '2nitkjiqnmrrtc',
       endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
     }
   }

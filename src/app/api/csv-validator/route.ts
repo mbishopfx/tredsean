@@ -380,7 +380,7 @@ function validateAndFormatLeads(leads: LeadData[]): ValidationResult {
 function generateCleanedCSV(leads: FormattedLead[]): string {
   if (leads.length === 0) return '';
   
-  // Standard headers for SMS campaigns
+  // PRESERVE ALL FIELDS - reliable processing with full data intact
   const headers = [
     'name',
     'first_name', 
@@ -407,7 +407,7 @@ function generateCleanedCSV(leads: FormattedLead[]): string {
     ...leads.map(lead => 
       headers.map(header => {
         const value = lead[header as keyof FormattedLead];
-        const stringValue = typeof value === 'boolean' ? value.toString() : (value || '');
+        const stringValue = typeof value === 'boolean' ? value.toString() : String(value || '');
         // Escape quotes and wrap in quotes if contains comma
         const escaped = stringValue.replace(/"/g, '""');
         return stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') 

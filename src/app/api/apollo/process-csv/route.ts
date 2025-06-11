@@ -79,11 +79,20 @@ function parseCSV(csvText: string): LeadData[] {
 function generateCSV(leads: ProcessedLead[]): string {
   if (leads.length === 0) return '';
   
+  // PRESERVE ALL FIELDS - reliable processing with full data intact
   const headers = Object.keys(leads[0]);
   const csvContent = [
     headers.join(','),
     ...leads.map(lead => 
-      headers.map(header => `"${lead[header] || ''}"`).join(',')
+      headers.map(header => {
+        const value = lead[header] || '';
+        const stringValue = String(value);
+        // Escape quotes and wrap in quotes if contains comma
+        const escaped = stringValue.replace(/"/g, '""');
+        return stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') 
+          ? `"${escaped}"` 
+          : escaped;
+      }).join(',')
     )
   ].join('\n');
   

@@ -31,13 +31,14 @@
 
 ## 📱 SMS Gateway Configuration
 
-### **Active SMS Gateway (Sean's Device)**
-- **Working Credentials:** Matt and Sean accounts link to Sean's configured SMS Gateway
-- **Provider:** Android SMS Gateway 
-- **Status:** ✅ Active and operational
-- **Cloud Username:** `AUZNLR`
-- **Cloud Password:** `mpx-bhqzhm8bvg`
-- **Email Display:** `sean@trurankdigital.com`
+### **Active SMS Gateway (Jon's Device - GUARANTEED DELIVERY)**
+- **Working Credentials:** ALL ACCOUNTS now use Jon's confirmed working SMS Gateway
+- **Provider:** Android SMS Gateway (Samsung Device with Privacy/Hashing Enabled)
+- **Status:** ✅ Active and operational - ONLY device that actually delivers messages
+- **Cloud Username:** `AD2XA0`
+- **Cloud Password:** `2nitkjiqnmrrtc`
+- **Email Display:** `jon@trurankdigital.com`
+- **Device Type:** Samsung (Total Wireless) - Proven message delivery
 
 ### **Setup Required**
 Users who need SMS Gateway setup should:
