@@ -351,6 +351,9 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
   const [singlePhone, setSinglePhone] = useState('');
   const [singleMessage, setSingleMessage] = useState('');
   const [isSendingSingle, setIsSendingSingle] = useState(false);
+  
+  // SMS Provider selection - default to Jon's device
+  const [smsProvider, setSmsProvider] = useState<'jon-device' | 'personal'>('jon-device');
 
   const filteredVariables = AVAILABLE_VARIABLES.filter(variable => {
     const matchesCategory = selectedCategory === 'All' || variable.category === selectedCategory;
@@ -533,40 +536,58 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
         return;
       }
 
-      // Get Matt's SMS Gateway credentials from localStorage (set during login)
-      const storedCredentials = localStorage.getItem('personalSMSCredentials');
-      const personalSMSCredentials = storedCredentials ? JSON.parse(storedCredentials) : null;
+      console.log('📤 Sending single message via', smsProvider, 'to:', formattedPhone);
       
-      if (!personalSMSCredentials) {
-        setSendStatus({
-          success: false,
-          message: '❌ Personal SMS credentials not found. Please log in again.'
+      let response;
+      
+      if (smsProvider === 'jon-device') {
+        // Use Jon's SMS Gateway device
+        response = await fetch('/api/sms-gateway/send-jon', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            phoneNumber: formattedPhone,
+            message: singleMessage
+          }),
         });
-        setIsSendingSingle(false);
-        return;
+      } else {
+        // Use personal SMS Gateway credentials
+        const storedCredentials = localStorage.getItem('personalSMSCredentials');
+        const personalSMSCredentials = storedCredentials ? JSON.parse(storedCredentials) : null;
+        
+        if (!personalSMSCredentials) {
+          setSendStatus({
+            success: false,
+            message: '❌ Personal SMS credentials not found. Please log in again.'
+          });
+          setIsSendingSingle(false);
+          return;
+        }
+
+        // Transform credentials for SMS Gateway compatibility
+        const transformedCredentials = personalSMSCredentials?.provider === 'smsgateway' ? {
+          ...personalSMSCredentials,
+          username: personalSMSCredentials.cloudUsername || personalSMSCredentials.username,
+          password: personalSMSCredentials.cloudPassword || personalSMSCredentials.password
+        } : personalSMSCredentials;
+
+        response = await fetch('/api/sms/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            phoneNumbers: [formattedPhone],
+            message: singleMessage,
+            provider: 'personal',
+            credentials: transformedCredentials,
+            contactData: [{ phone: formattedPhone }],
+            campaignId: `single_${Date.now()}`
+          }),
+        });
       }
-
-      // Transform credentials for SMS Gateway compatibility
-      const transformedCredentials = personalSMSCredentials?.provider === 'smsgateway' ? {
-        ...personalSMSCredentials,
-        username: personalSMSCredentials.cloudUsername || personalSMSCredentials.username,
-        password: personalSMSCredentials.cloudPassword || personalSMSCredentials.password
-      } : personalSMSCredentials;
-
-      const response = await fetch('/api/sms/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          phoneNumbers: [formattedPhone],
-          message: singleMessage,
-          provider: 'personal',
-          credentials: transformedCredentials,
-          contactData: [{ phone: formattedPhone }],
-          campaignId: `single_${Date.now()}`
-        }),
-      });
 
       const data = await response.json();
       
@@ -632,25 +653,30 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
     setSendStatus(null);
     
     try {
-      // Get SMS Gateway credentials from localStorage
-      const storedCredentials = localStorage.getItem('personalSMSCredentials');
-      const personalSMSCredentials = storedCredentials ? JSON.parse(storedCredentials) : null;
+      console.log('📤 Starting mass campaign via', smsProvider, 'to', phoneNumbers.length, 'contacts');
       
-      if (!personalSMSCredentials) {
-        setSendStatus({
-          success: false,
-          message: '❌ Personal SMS credentials not found. Please log in again.'
-        });
-        setIsSending(false);
-        return;
-      }
+      // Only check for personal credentials if not using Jon's device
+      let transformedCredentials = null;
+      if (smsProvider !== 'jon-device') {
+        const storedCredentials = localStorage.getItem('personalSMSCredentials');
+        const personalSMSCredentials = storedCredentials ? JSON.parse(storedCredentials) : null;
+        
+        if (!personalSMSCredentials) {
+          setSendStatus({
+            success: false,
+            message: '❌ Personal SMS credentials not found. Please log in again.'
+          });
+          setIsSending(false);
+          return;
+        }
 
-      // Transform credentials for SMS Gateway compatibility
-      const transformedCredentials = personalSMSCredentials?.provider === 'smsgateway' ? {
-        ...personalSMSCredentials,
-        username: personalSMSCredentials.cloudUsername || personalSMSCredentials.username,
-        password: personalSMSCredentials.cloudPassword || personalSMSCredentials.password
-      } : personalSMSCredentials;
+        // Transform credentials for SMS Gateway compatibility
+        transformedCredentials = personalSMSCredentials?.provider === 'smsgateway' ? {
+          ...personalSMSCredentials,
+          username: personalSMSCredentials.cloudUsername || personalSMSCredentials.username,
+          password: personalSMSCredentials.cloudPassword || personalSMSCredentials.password
+        } : personalSMSCredentials;
+      }
 
       // Send campaign tracking request first
       if (trackingEnabled) {
@@ -725,21 +751,37 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
         console.log(`Personalized message:`, personalizedMessage);
         
         try {
-          // Send exactly like a single message
-          const response = await fetch('/api/sms/send', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              phoneNumbers: [formattedPhone],
-              message: personalizedMessage,
-              provider: 'personal',
-              credentials: transformedCredentials,
-              contactData: [{ phone: formattedPhone }],
-              campaignId: `single_${Date.now()}_${i}` // Make each look like a single message
-            }),
-          });
+          let response;
+          
+          if (smsProvider === 'jon-device') {
+            // Use Jon's SMS Gateway device
+            response = await fetch('/api/sms-gateway/send-jon', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                phoneNumber: formattedPhone,
+                message: personalizedMessage
+              }),
+            });
+          } else {
+            // Use personal SMS Gateway credentials
+            response = await fetch('/api/sms/send', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                phoneNumbers: [formattedPhone],
+                message: personalizedMessage,
+                provider: 'personal',
+                credentials: transformedCredentials,
+                contactData: [{ phone: formattedPhone }],
+                campaignId: `single_${Date.now()}_${i}` // Make each look like a single message
+              }),
+            });
+          }
 
           const data = await response.json();
           
@@ -916,6 +958,42 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
                   </div>
                 </div>
                 
+                {/* SMS Provider Selection */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    SMS Provider
+                  </label>
+                  <div className="flex bg-tech-secondary rounded-lg p-1">
+                    <button
+                      onClick={() => setSmsProvider('jon-device')}
+                      className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                        smsProvider === 'jon-device'
+                          ? 'bg-green-600 text-white'
+                          : 'text-gray-400 hover:text-gray-300'
+                      }`}
+                    >
+                      📱 Jon's Device (Recommended)
+                    </button>
+                    <button
+                      onClick={() => setSmsProvider('personal')}
+                      className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                        smsProvider === 'personal'
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-400 hover:text-gray-300'
+                      }`}
+                    >
+                      🔧 Personal Credentials
+                    </button>
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    {smsProvider === 'jon-device' ? (
+                      <span className="text-green-400">✅ Using Jon's working Samsung device - Guaranteed delivery!</span>
+                    ) : (
+                      <span className="text-yellow-400">⚠️ Using personal credentials - May have delivery issues</span>
+                    )}
+                  </div>
+                </div>
+
                 {/* Message Input */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -1010,6 +1088,61 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
           <div className="xl:col-span-2 space-y-6">
             {/* SMS Gateway Health Status */}
             <SMSGatewayHealthChecker />
+            
+            {/* SMS Provider Selection */}
+            <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-green-500 to-blue-500"></div>
+              <div className="p-6">
+                <h3 className="text-lg font-semibold mb-4">SMS Provider</h3>
+                <div className="flex bg-tech-secondary rounded-lg p-1">
+                  <button
+                    onClick={() => setSmsProvider('jon-device')}
+                    className={`flex-1 px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+                      smsProvider === 'jon-device'
+                        ? 'bg-green-600 text-white'
+                        : 'text-gray-400 hover:text-gray-300'
+                    }`}
+                  >
+                    📱 Jon's Device (Recommended)
+                  </button>
+                  <button
+                    onClick={() => setSmsProvider('personal')}
+                    className={`flex-1 px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+                      smsProvider === 'personal'
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-400 hover:text-gray-300'
+                    }`}
+                  >
+                    🔧 Personal Credentials
+                  </button>
+                </div>
+                <div className="mt-3 p-3 rounded-md bg-tech-secondary bg-opacity-50">
+                  <div className="text-sm">
+                    {smsProvider === 'jon-device' ? (
+                      <>
+                        <div className="text-green-400 font-medium">✅ Jon's Samsung Device</div>
+                        <div className="text-gray-400 mt-1">
+                          • Confirmed working for SMS delivery<br/>
+                          • Samsung Galaxy device with SMS Gateway app<br/>
+                          • Handles mass campaigns reliably<br/>
+                          • Automatic conversation tracking
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-yellow-400 font-medium">⚠️ Personal Credentials</div>
+                        <div className="text-gray-400 mt-1">
+                          • May have delivery issues on some devices<br/>
+                          • Motorola devices known to have problems<br/>
+                          • Use only if you've tested delivery<br/>
+                          • Requires manual credential setup
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           
           {/* Message Composer */}
           <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">

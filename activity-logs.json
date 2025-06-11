@@ -1714,5 +1714,45 @@
       "username": "Seantrd",
       "displayName": "Sean"
     }
+  },
+  {
+    "timestamp": "2025-06-11T02:01:52.917Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-11T02:02:36.607Z",
+    "user": "Seantrd",
+    "action": "Single SMS Sent",
+    "details": {
+      "phone": "+14176297373",
+      "messageLength": 8,
+      "timestamp": "2025-06-11T02:02:36.586Z"
+    }
+  },
+  {
+    "timestamp": "2025-06-11T02:04:38.844Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-11T02:05:43.960Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
   }
 ]

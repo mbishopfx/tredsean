@@ -7,6 +7,8 @@ interface SMSCredentials {
   jwt?: string;
   phoneNumber?: string;
   provider: 'smsmobile' | 'smsdove' | 'smsgateway';
+  cloudUsername?: string;
+  cloudPassword?: string;
 }
 
 interface SMSRequest {
@@ -98,8 +100,8 @@ export async function POST(request: NextRequest) {
                   method: 'POST',
                   headers: {
                    'Content-Type': 'application/json',
-                   'Authorization': credentials.provider === 'smsgateway' && credentials.email === 'sean@trurankdigital.com' 
-                     ? `Basic ${Buffer.from('AUZNLR:mpx-bhqzhm8bvg').toString('base64')}`
+                   'Authorization': credentials.provider === 'smsgateway' && (credentials as any).cloudUsername && (credentials as any).cloudPassword
+                     ? `Basic ${Buffer.from((credentials as any).cloudUsername + ':' + (credentials as any).cloudPassword).toString('base64')}`
                      : `Basic ${Buffer.from(credentials.email + ':' + credentials.password).toString('base64')}`
                  },
                   body: JSON.stringify({

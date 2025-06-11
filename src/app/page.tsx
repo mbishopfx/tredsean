@@ -1074,24 +1074,16 @@ function DashboardContent() {
       const phoneNumber = selectedConversation.replace(/^(sms_gateway_|twilio_)/, '');
       
       if (smsProviderTab === 'sms-gateway') {
-        // Transform credentials for SMS Gateway compatibility
-        const transformedCredentials = personalSMSCredentials?.provider === 'smsgateway' ? {
-          ...personalSMSCredentials,
-          username: personalSMSCredentials.cloudUsername || personalSMSCredentials.username,
-          password: personalSMSCredentials.cloudPassword || personalSMSCredentials.password
-        } : personalSMSCredentials;
-
-        // Use SMS Gateway - use the /api/sms/send endpoint with proper credentials
-        response = await fetch('/api/sms/send', {
+        // Use Jon's SMS Gateway device for all SMS Gateway conversations
+        console.log('📱 Sending reply via Jon\'s device to:', phoneNumber);
+        response = await fetch('/api/sms-gateway/send-jon', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            phoneNumbers: [phoneNumber],
-            message: chatMessage,
-            provider: 'personal',
-            credentials: transformedCredentials
+            phoneNumber: phoneNumber,
+            message: chatMessage
           }),
         });
       } else {
@@ -2079,6 +2071,18 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
             <ReportsIcon />
             <span className="ml-3">Campaign Analytics</span>
             <span className="ml-auto bg-purple-600 text-white text-xs px-2 py-0.5 rounded-full">NEW</span>
+          </div>
+          <div 
+            className={`flex items-center px-4 py-3 cursor-pointer ${
+              activeTab === 'sms-chats' 
+                ? 'bg-gradient text-white' 
+                : 'hover:bg-tech-secondary transition-colors duration-200'
+            }`}
+            onClick={() => setActiveTab('sms-chats')}
+          >
+            <MessageIcon />
+            <span className="ml-3">SMS Chats</span>
+            <span className="ml-auto bg-green-600 text-white text-xs px-2 py-0.5 rounded-full">Jon's Device</span>
           </div>
 {/* Voice Dialer removed */}
           <div 
