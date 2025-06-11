@@ -114,7 +114,7 @@ function DashboardContent() {
   const [sendStatus, setSendStatus] = useState<{ success: boolean; message: string } | null>(null);
   
   // SMS Provider Selection
-  const [smsProvider, setSmsProvider] = useState<'twilio' | 'personal'>('twilio');
+  const [smsProvider, setSmsProvider] = useState<'twilio' | 'personal' | 'jon-device'>('jon-device');
   const [personalSMSCredentials, setPersonalSMSCredentials] = useState<any>(null);
   const [showPersonalSMSModal, setShowPersonalSMSModal] = useState(false);
   
@@ -351,7 +351,7 @@ function DashboardContent() {
   // Fetch SMS conversations when the SMS Chats tab is active
   useEffect(() => {
     async function fetchConversations() {
-      if (activeTab !== 'sms-chats') return;
+      return; // SMS chats removed
       
       setLoadingConversations(true);
       
@@ -430,7 +430,7 @@ function DashboardContent() {
     
     // Set up auto-refresh every 15 seconds while tab is active
     let intervalId: NodeJS.Timeout;
-    if (activeTab === 'sms-chats') {
+    if (false) { // SMS chats removed
       intervalId = setInterval(fetchConversations, 15000);
     }
     
@@ -504,7 +504,7 @@ function DashboardContent() {
     
     // Set up live polling for messages when a conversation is selected
     let messagePollingInterval: NodeJS.Timeout;
-    if (selectedConversation && activeTab === 'sms-chats') {
+          if (false) { // SMS chats removed
       // Poll for new messages every 3 seconds when conversation is active
       messagePollingInterval = setInterval(() => {
         fetchMessages();
@@ -926,20 +926,41 @@ function DashboardContent() {
         };
       });
 
-      // Transform credentials for SMS Gateway compatibility
-      const transformedCredentials = personalSMSCredentials?.provider === 'smsgateway' ? {
-        ...personalSMSCredentials,
-        username: personalSMSCredentials.cloudUsername || personalSMSCredentials.username,
-        password: personalSMSCredentials.cloudPassword || personalSMSCredentials.password
-      } : personalSMSCredentials;
-
-      // Use SMS service with provider selection
-      const smsService = new SMSService(transformedCredentials);
-      const results = await smsService.sendMessages(
-        messages, 
-        smsProvider === 'personal', 
-        transformedCredentials
-      );
+      // Always use Jon's SMS Gateway device for reliable delivery
+      // Jon's Samsung device is the only one that actually delivers messages
+      const results = [];
+      
+      for (const msg of messages) {
+        try {
+          const response = await fetch('/api/sms-gateway/send-jon', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              phoneNumber: msg.phone,
+              message: msg.message
+            }),
+          });
+          
+          const data = await response.json();
+          
+          results.push({
+            phone: msg.phone,
+            success: response.ok && data.success,
+            messageId: data.messageId || `jon_${Date.now()}`,
+            provider: 'Jon\'s Samsung Device',
+            error: response.ok ? undefined : (data.error || 'Failed to send')
+          });
+        } catch (error) {
+          results.push({
+            phone: msg.phone,
+            success: false,
+            provider: 'Jon\'s Samsung Device',
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }
+      }
 
       // Count successful and failed messages
       const successful = results.filter((r: any) => r.success).length;
@@ -1131,48 +1152,8 @@ function DashboardContent() {
       
       setConversationMessages(prev => [...prev, messageToAdd]);
       
-      // Immediately refresh conversations and messages to show the sent message
-      setTimeout(async () => {
-        if (activeTab === 'sms-chats') {
-          try {
-            // Refresh both conversations and current messages
-            const [twilioResponse, smsGatewayResponse] = await Promise.all([
-              fetch('/api/twilio/conversations'),
-              fetch('/api/sms-gateway/conversations')
-            ]);
-            
-            const twilioData = await twilioResponse.json();
-            const smsGatewayData = await smsGatewayResponse.json();
-            
-            // Update conversations
-            const twilioConversations = twilioData.conversations || [];
-            const smsGatewayConversations = smsGatewayData.conversations || [];
-            
-            const markedTwilioConversations = twilioConversations.map((conv: any) => ({
-              ...conv,
-              provider: 'twilio',
-              friendlyName: conv.friendlyName || `Twilio - ${conv.phoneNumber}`
-            }));
-            
-            const markedSmsGatewayConversations = smsGatewayConversations.map((conv: any) => ({
-              ...conv,
-              provider: 'sms_gateway',
-              friendlyName: conv.friendlyName || `SMS Gateway - ${conv.phoneNumber || 'Unknown'}`
-            }));
-            
-            setTwilioConversations(markedTwilioConversations);
-            setSmsGatewayConversations(markedSmsGatewayConversations);
-            
-            // Update current conversations view based on active tab
-            const currentConversations = smsProviderTab === 'twilio' ? markedTwilioConversations : markedSmsGatewayConversations;
-            setConversations(currentConversations);
-            
-            console.log('🔄 Refreshed conversations after sending message');
-          } catch (error) {
-            console.error('Error refreshing conversations:', error);
-          }
-        }
-      }, 1000);
+      // Log success
+      console.log('✅ Message sent successfully');
       
       // Log chat message activity
       logActivity('send_chat', { 
@@ -2072,18 +2053,6 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
             <span className="ml-3">Campaign Analytics</span>
             <span className="ml-auto bg-purple-600 text-white text-xs px-2 py-0.5 rounded-full">NEW</span>
           </div>
-          <div 
-            className={`flex items-center px-4 py-3 cursor-pointer ${
-              activeTab === 'sms-chats' 
-                ? 'bg-gradient text-white' 
-                : 'hover:bg-tech-secondary transition-colors duration-200'
-            }`}
-            onClick={() => setActiveTab('sms-chats')}
-          >
-            <MessageIcon />
-            <span className="ml-3">SMS Chats</span>
-            <span className="ml-auto bg-green-600 text-white text-xs px-2 py-0.5 rounded-full">Jon's Device</span>
-          </div>
 {/* Voice Dialer removed */}
           <div 
             className={`flex items-center px-4 py-3 cursor-pointer ${
@@ -2521,6 +2490,19 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
                     <div className="flex bg-tech-secondary bg-opacity-50 rounded-md p-1">
                       <button
                         className={`flex-1 py-2 px-3 text-center text-sm rounded-md transition-colors duration-200 flex items-center justify-center ${
+                          smsProvider === 'jon-device' 
+                            ? 'bg-gradient text-white' 
+                            : 'text-gray-300 hover:bg-tech-secondary'
+                        }`}
+                        onClick={() => setSmsProvider('jon-device')}
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M17 2H7c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H7V6h10v10z"/>
+                        </svg>
+                        Jon's Samsung (Recommended)
+                      </button>
+                      <button
+                        className={`flex-1 py-2 px-3 text-center text-sm rounded-md transition-colors duration-200 flex items-center justify-center ${
                           smsProvider === 'twilio' 
                             ? 'bg-gradient text-white' 
                             : 'text-gray-300 hover:bg-tech-secondary'
@@ -2546,6 +2528,12 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
                         Personal Phone
                       </button>
                     </div>
+                    
+                    {smsProvider === 'jon-device' && (
+                      <div className="mt-2 p-3 bg-green-900 bg-opacity-20 border border-green-500 rounded-md text-green-400 text-sm">
+                        ✅ Connected to Jon's Samsung device - Guaranteed delivery (AD2XA0:2nitkjiqnmrrtc)
+                      </div>
+                    )}
                     
                     {smsProvider === 'personal' && personalSMSCredentials && (
                       <div className="mt-2 p-3 bg-green-900 bg-opacity-20 border border-green-500 rounded-md text-green-400 text-sm">
@@ -2594,482 +2582,8 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
           </div>
         </div>
 
-        <div className={activeTab === 'sms-chats' ? 'block' : 'hidden'}>
-          <div className="p-8">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <h2 className="text-2xl font-bold">SMS Conversations</h2>
-                <div className="ml-4 px-3 py-1 bg-tech-card text-xs rounded-full flex items-center">
-                  <span className={`w-2 h-2 ${loadingConversations ? 'bg-primary animate-pulse-fast' : 'bg-primary animate-pulse-slow'} rounded-full mr-2`}></span>
-                  Live Updates
-                </div>
-              </div>
-              
-              {/* Provider Tabs */}
-              <div className="flex bg-tech-secondary bg-opacity-50 rounded-md p-1">
-                <button
-                  className={`px-4 py-2 text-sm rounded-md transition-colors duration-200 ${
-                    smsProviderTab === 'twilio'
-                      ? 'bg-gradient text-white'
-                      : 'text-gray-300 hover:bg-tech-secondary'
-                  }`}
-                  onClick={() => setSmsProviderTab('twilio')}
-                >
-                  📞 Twilio ({twilioConversations.length})
-                </button>
-                <button
-                  className={`px-4 py-2 text-sm rounded-md transition-colors duration-200 ${
-                    smsProviderTab === 'sms-gateway'
-                      ? 'bg-gradient text-white'
-                      : 'text-gray-300 hover:bg-tech-secondary'
-                  }`}
-                  onClick={() => setSmsProviderTab('sms-gateway')}
-                >
-                  📱 SMS Gateway ({smsGatewayConversations.length})
-                </button>
-              </div>
-            </div>
-            
-            <div className="flex h-[calc(100vh-180px)]">
-              {/* Conversation List */}
-              <div className="w-1/3 bg-tech-card rounded-l-lg shadow-tech overflow-y-auto border-r border-tech-border">
-                <div className="p-4 border-b border-tech-border">
-                  <div className="relative">
-                    <input 
-                      type="text" 
-                      placeholder="Search conversations..." 
-                      className="w-full pl-9 pr-3 py-2 bg-tech-input border border-tech-border rounded-md text-tech-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="overflow-y-auto scrollbar-thin max-h-[calc(100vh-240px)]">
-                  {loadingConversations && conversations.length === 0 ? (
-                    <div className="flex justify-center items-center h-40">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    </div>
-                  ) : conversations.length === 0 ? (
-                    <div className="p-4 text-center text-gray-400">
-                      <p>No conversations found.</p>
-                      <p className="text-xs mt-1">Start sending messages to see them here.</p>
-                      <button 
-                        onClick={() => setActiveTab('message-editor')}
-                        className="mt-3 px-4 py-2 bg-gradient hover:shadow-primary text-white rounded-md text-sm transition-shadow duration-300"
-                      >
-                        Start New Conversation
-                      </button>
-                    </div>
-                  ) : (
-                    conversations.map((conversation) => (
-                      <div 
-                        key={conversation.phoneNumber} 
-                        className={`p-4 border-b border-tech-border hover:bg-tech-secondary hover:bg-opacity-50 cursor-pointer transition-colors duration-200 ${selectedConversation === conversation.phoneNumber ? 'bg-tech-secondary bg-opacity-30' : ''}`}
-                        onClick={() => {
-                          setSelectedConversation(conversation.phoneNumber);
-                          // Mark as read when conversation is opened
-                          if (conversation.unreadCount > 0) {
-                            setConversations(prev => prev.map(conv => 
-                              conv.phoneNumber === conversation.phoneNumber 
-                                ? { ...conv, unreadCount: 0 }
-                                : conv
-                            ));
-                          }
-                        }}
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex items-center space-x-2 flex-1">
-                            <span className="font-medium text-tech-foreground truncate">
-                              {conversation.phoneNumber}
-                            </span>
-                            
-                            {/* Provider Badge */}
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                              smsProviderTab === 'twilio' 
-                                ? 'bg-blue-100 text-blue-800' 
-                                : 'bg-green-100 text-green-800'
-                            }`}>
-                              {smsProviderTab === 'twilio' ? '📞' : '📱'}
-                            </span>
-                            
-                            {/* Status Indicators */}
-                            {conversation.unreadCount > 0 && (
-                              <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">
-                                UNREAD
-                              </span>
-                            )}
-                            {conversation.unreadCount === 0 && conversation.lastMessageDirection === 'inbound' && (
-                              <span className="bg-yellow-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">
-                                PENDING
-                              </span>
-                            )}
-                            {conversation.unreadCount === 0 && conversation.lastMessageDirection === 'outbound' && (
-                              <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">
-                                REPLIED
-                              </span>
-                            )}
-                          </div>
-                          
-                          <div className="text-xs text-gray-400 ml-2">
-                            {new Date(conversation.lastMessageDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                          </div>
-                        </div>
-                        
-                        <div className="text-sm text-gray-400 truncate mt-1 flex items-center">
-                          {conversation.lastMessageDirection === 'inbound' ? (
-                            <span className="font-medium text-blue-400 mr-1">Them: </span>
-                          ) : (
-                            <span className="font-medium text-orange-400 mr-1">You: </span>
-                          )}
-                          {conversation.lastMessageText}
-                        </div>
-                        
-                        {conversation.unreadCount > 0 && (
-                          <div className="flex justify-end mt-2">
-                            <span className="bg-primary text-white text-xs px-2 py-1 rounded-full font-bold animate-pulse">
-                              {conversation.unreadCount} new
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-              
-              {/* Chat Messages */}
-              <div className="flex-1 flex flex-col bg-tech-card rounded-r-lg shadow-tech">
-                {selectedConversation ? (
-                  <>
-                    <div className="p-4 border-b border-tech-border">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center">
-                          <div className="text-lg font-medium">{selectedConversation}</div>
-                          <div className="ml-3 px-2 py-0.5 bg-tech-secondary rounded-full text-xs">
-                            {loadingMessages ? 'Loading...' : 'Connected'}
-                          </div>
-                          {pipelineSuccess && (
-                            <div className={`ml-3 px-2 py-0.5 rounded-full text-xs ${pipelineSuccess.startsWith('Error') ? 'bg-status-danger bg-opacity-20 text-status-danger' : 'bg-status-success bg-opacity-20 text-status-success'}`}>
-                              {pipelineSuccess}
-                            </div>
-                          )}
-                          
-                          {/* SMS Provider Selection */}
-                          <div className="ml-4 flex items-center">
-                            <span className="text-xs text-gray-400 mr-2">Via:</span>
-                            <div className="flex bg-tech-secondary rounded-md p-1">
-                              <button
-                                onClick={() => handleSMSProviderChange('twilio')}
-                                className={`px-3 py-1 rounded-sm text-xs font-medium transition-colors duration-200 flex items-center ${
-                                  smsProvider === 'twilio'
-                                    ? 'bg-gradient text-white shadow-sm'
-                                    : 'text-gray-400 hover:text-white'
-                                }`}
-                              >
-                                <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                                </svg>
-                                Twilio
-                              </button>
-                              <button
-                                onClick={() => {
-                                  if (!personalSMSCredentials) {
-                                    setShowPersonalSMSModal(true);
-                                  } else {
-                                    handleSMSProviderChange('personal');
-                                  }
-                                }}
-                                className={`px-3 py-1 rounded-sm text-xs font-medium transition-colors duration-200 flex items-center ${
-                                  smsProvider === 'personal'
-                                    ? 'bg-gradient text-white shadow-sm'
-                                    : 'text-gray-400 hover:text-white'
-                                }`}
-                              >
-                                <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path d="M17 2H7c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H7V6h10v10z"/>
-                                </svg>
-                                Personal
-                              </button>
-                            </div>
-                          </div>
-                          
-                          {smsProvider === 'personal' && personalSMSCredentials && (
-                            <div className="ml-2 px-2 py-1 bg-green-900 bg-opacity-20 border border-green-500 rounded-md text-green-400 text-xs">
-                              ✓ {personalSMSCredentials.provider}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={handleAiAnalysis}
-                            disabled={loadingAiAnalysis || conversationMessages.length === 0}
-                            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-md hover:from-purple-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center space-x-2"
-                          >
-                            <svg className={`w-3 h-3 ${loadingAiAnalysis ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              {loadingAiAnalysis ? (
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                              ) : (
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                              )}
-                            </svg>
-                            <span>{loadingAiAnalysis ? 'Analyzing...' : 'AI Analysis'}</span>
-                          </button>
-                          <button 
-                            className={`p-2 rounded-full transition-colors duration-200 flex items-center ${
-                              addingToPipeline 
-                                ? 'bg-tech-secondary cursor-not-allowed' 
-                                : 'hover:bg-accent hover:bg-opacity-20 text-accent'
-                            }`}
-                            onClick={handleAddToPipeline}
-                            disabled={addingToPipeline}
-                            title="Add to Pipeline and create $1900 opportunity"
-                          >
-                            {addingToPipeline ? (
-                              <svg className="animate-spin h-5 w-5 text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                            ) : (
-                              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                              </svg>
-                            )}
-                            <span className="ml-1 text-sm">Add to Pipeline</span>
-                          </button>
-                          <button 
-                            className="p-2 hover:bg-tech-secondary hover:bg-opacity-50 rounded-full transition-colors duration-200"
-                            onClick={() => {
-                              setPhoneNumber(selectedConversation);
-                              setActiveTab('voice-dialer');
-                            }}
-                            title="Call this number"
-                          >
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                            </svg>
-                          </button>
-                          <button className="p-2 hover:bg-tech-secondary hover:bg-opacity-50 rounded-full transition-colors duration-200">
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex-1 p-4 overflow-y-auto bg-tech-background bg-grid scrollbar-thin">
-                      {loadingMessages ? (
-                        <div className="flex justify-center items-center h-full">
-                          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
-                        </div>
-                      ) : conversationMessages.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                          <svg className="h-16 w-16 mb-4 text-tech-border" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                          </svg>
-                          <p>No messages yet.</p>
-                          <p className="text-sm mt-1">Send a message to start the conversation.</p>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col space-y-2 w-full px-2">
-                          {/* Group messages by date */}
-                          {(() => {
-                            let lastDate = '';
-                            const messageGroups: React.ReactNode[] = [];
-                            
-                            conversationMessages.forEach((message, index) => {
-                              const messageDate = new Date(message.dateCreated);
-                              const formattedDate = messageDate.toLocaleDateString();
-                              
-                              // Add date separator if it's a new day
-                              if (formattedDate !== lastDate) {
-                                lastDate = formattedDate;
-                                messageGroups.push(
-                                  <div key={`date-${index}`} className="flex justify-center my-4">
-                                    <div className="bg-tech-secondary bg-opacity-30 text-gray-400 text-xs py-1 px-3 rounded-full">
-                                      {formattedDate === new Date().toLocaleDateString() 
-                                        ? 'Today' 
-                                        : formattedDate === new Date(Date.now() - 86400000).toLocaleDateString()
-                                          ? 'Yesterday'
-                                          : formattedDate}
-                                    </div>
-                                  </div>
-                                );
-                              }
-                              
-                              // Add the message with proper alignment
-                              const isOutbound = message.direction === 'outbound' || message.direction === 'outbound-api';
-                              messageGroups.push(
-                                <div key={message.sid} className={`w-full flex mb-3 ${isOutbound ? 'justify-end' : 'justify-start'}`}>
-                                  <div className={`flex max-w-[85%] ${isOutbound ? 'flex-row-reverse' : 'flex-row'}`}>
-                                    <div className={`w-8 h-8 rounded-full flex-shrink-0 ${isOutbound ? 'ml-2' : 'mr-2'} self-end flex items-center justify-center ${
-                                      isOutbound ? 'bg-orange-500' : 'bg-blue-600'
-                                    }`}>
-                                      <span className="text-xs text-white">
-                                        {isOutbound ? 'Me' : (message.from && typeof message.from === 'string' ? message.from.charAt(message.from.length - 1) : '?')}
-                                      </span>
-                                    </div>
-                                    
-                                    <div className={`
-                                      flex flex-col
-                                      ${isOutbound 
-                                        ? 'bg-orange-500 text-white rounded-tl-lg rounded-tr-sm rounded-bl-lg rounded-br-lg' 
-                                        : 'bg-blue-500 text-white rounded-tr-lg rounded-tl-sm rounded-bl-lg rounded-br-lg'
-                                      } 
-                                      p-3 shadow-sm 
-                                    `}>
-                                      <div className="text-sm whitespace-pre-wrap break-words">{message.body}</div>
-                                      <div className={`text-xs ${isOutbound ? 'text-right' : 'text-left'} mt-1 ${isOutbound ? 'text-orange-200' : 'text-blue-100'}`}>
-                                        {messageDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                        {isOutbound && (
-                                          <span className="ml-2">
-                                            {message.status === 'delivered' ? '✓✓' : message.status === 'sent' ? '✓' : '⌛'}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            });
-                            
-                            return messageGroups;
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* AI Analysis Panel */}
-                    {showAiAnalysis && (
-                      <div className="p-4 border-t border-tech-border bg-gradient-to-r from-purple-50 to-blue-50">
-                        <div className="flex justify-between items-center mb-3">
-                          <h4 className="text-sm font-semibold text-purple-700 flex items-center space-x-2">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                            </svg>
-                            <span>AI Suggested Response</span>
-                          </h4>
-                          <button
-                            onClick={() => setShowAiAnalysis(false)}
-                            className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                        
-                        {loadingAiAnalysis ? (
-                          <div className="flex items-center justify-center py-8">
-                            <div className="flex items-center space-x-3">
-                              <svg className="w-5 h-5 animate-spin text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                              </svg>
-                              <span className="text-purple-600">Analyzing conversation...</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            <div className="bg-white rounded-lg p-4 border border-purple-200 shadow-sm">
-                              <p className="text-gray-800 whitespace-pre-wrap">{aiAnalysis}</p>
-                            </div>
-                            
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => copyToClipboard(aiAnalysis)}
-                                className="px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors duration-200 flex items-center space-x-2 text-sm"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                </svg>
-                                <span>Copy Response</span>
-                              </button>
-                              
-                              <button
-                                onClick={() => setChatMessage(aiAnalysis)}
-                                className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200 flex items-center space-x-2 text-sm"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                                </svg>
-                                <span>Use Response</span>
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    
-                    <div className="bg-tech-card p-4 border-t border-tech-border">
-                      <div className="flex items-center">
-                        <div className="flex-1 relative">
-                          <input 
-                            type="text" 
-                            placeholder="Type a message..." 
-                            className="flex-1 w-full px-3 py-2 bg-tech-input border border-tech-border rounded-l-md focus:outline-none focus:ring-1 focus:ring-primary text-tech-foreground pr-10"
-                            value={chatMessage}
-                            onChange={(e) => setChatMessage(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSendChatMessage();
-                              }
-                            }}
-                            disabled={sendingChatMessage}
-                          />
-                          <div className="absolute right-2 top-2 flex space-x-1">
-                            <button className="text-gray-400 hover:text-primary transition-colors duration-200">
-                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                              </svg>
-                            </button>
-                            <button className="text-gray-400 hover:text-primary transition-colors duration-200">
-                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                        <button 
-                          className={`${
-                            sendingChatMessage ? 'bg-tech-secondary cursor-not-allowed' : 'bg-gradient hover:shadow-accent'
-                          } text-white px-4 py-2 rounded-r-md transition-shadow duration-300 flex items-center`}
-                          onClick={handleSendChatMessage}
-                          disabled={sendingChatMessage}
-                        >
-                          {sendingChatMessage ? (
-                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                          ) : null}
-                          Send
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-400 p-8">
-                    <svg className="h-20 w-20 mb-6 text-tech-border" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                    <h3 className="text-xl font-medium mb-2">Select a Conversation</h3>
-                    <p className="text-center max-w-md">
-                      Choose a conversation from the list to view and send messages.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Voice Dialer content removed */}
-        <div className="hidden">
+        {/* Voice Dialer Tab */}
+        <div className={activeTab === 'voice-dialer' ? 'block' : 'hidden'}>
           <div className="p-8">
             <div className="flex items-center mb-6">
               <h2 className="text-2xl font-bold">Voice Dialer</h2>
