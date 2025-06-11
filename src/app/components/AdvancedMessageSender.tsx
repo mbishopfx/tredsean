@@ -1298,6 +1298,31 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
                     </>
                   )}
                 </button>
+                
+                {/* NEW SEND BUTTON - Simpler and more reliable */}
+                <button
+                  onClick={handleSendMessages}
+                  disabled={isSending}
+                  className={`ml-4 px-6 py-3 rounded-md flex items-center space-x-2 text-white font-medium ${
+                    isSending || !messageText || phoneNumbers.length === 0
+                      ? 'bg-gray-600 cursor-not-allowed opacity-50'
+                      : 'bg-green-600 hover:bg-green-700'
+                  } transition-colors duration-200`}
+                >
+                  {isSending ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Sending...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                      <span>Send ({phoneNumbers.length} contacts)</span>
+                    </>
+                  )}
+                </button>
               </div>
               
               {sendStatus && (

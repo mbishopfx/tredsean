@@ -1774,5 +1774,69 @@
       "messageLength": 22,
       "timestamp": "2025-06-11T02:27:07.575Z"
     }
+  },
+  {
+    "timestamp": "2025-06-11T19:32:26.343Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-11T19:33:52.357Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-11T19:34:36.128Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-11T19:38:11.778Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-11T20:35:44.069Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-11T20:36:21.317Z",
+    "user": "Seantrd",
+    "action": "sequential_sms_campaign",
+    "details": {
+      "campaignId": "campaign_1749674176512_g1o5al0ga",
+      "total": 2,
+      "successful": 2,
+      "failed": 0,
+      "messageLength": 22,
+      "variablesUsed": 1,
+      "method": "one_by_one"
+    }
   }
 ]

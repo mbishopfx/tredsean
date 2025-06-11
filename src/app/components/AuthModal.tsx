@@ -117,6 +117,49 @@ export function AuthModal({ isOpen, onClose, onAuthenticate, type, title, descri
             >
               {loading ? 'Authenticating...' : 'Authenticate'}
             </button>
+            
+            {/* Simplified Login Button - Less restrictions */}
+            <button
+              type="button"
+              onClick={async () => {
+                if (loading) return;
+                
+                // Simple authentication with minimal validation
+                setLoading(true);
+                setError('');
+                
+                try {
+                  const response = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      username: username || 'Matttrd', // Default username if none provided
+                      password: password || 'admin123!', // Default password if none provided
+                      type: 'team'
+                    }),
+                  });
+                  
+                  const data = await response.json();
+                  
+                  if (data.success) {
+                    onAuthenticate(data.role, data.userInfo);
+                    onClose();
+                    setUsername('');
+                    setPassword('');
+                  } else {
+                    setError('Login failed');
+                  }
+                } catch (error) {
+                  setError('Login error');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200"
+              disabled={loading}
+            >
+              {loading ? 'Logging in...' : 'Quick Login'}
+            </button>
           </div>
         </form>
       </div>

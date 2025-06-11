@@ -32,7 +32,7 @@ interface FormattedLead {
   last_name: string;
   company: string;
   phone: string;
-  phone_type: 'mobile' | 'landline' | 'voip' | 'unknown';
+  phone_type: 'mobile' | 'landline' | 'unknown';
   email: string;
   title: string;
   city: string;
@@ -77,31 +77,42 @@ const FIELD_MAPPINGS = {
 };
 
 // Phone number validation and classification
-function detectPhoneType(phone: string): 'mobile' | 'landline' | 'voip' | 'unknown' {
+function detectPhoneType(phone: string): 'sms_eligible' | 'toll_free' | 'unknown' {
   if (!phone) return 'unknown';
   
   const cleaned = phone.replace(/\D/g, '');
   if (cleaned.length < 10) return 'unknown';
   
-  const areaCode = cleaned.substring(0, 3);
+  // Extract area code from US numbers
+  let areaCode;
+  if (cleaned.length === 11 && cleaned.startsWith('1')) {
+    // US number with country code (+1)
+    areaCode = cleaned.substring(1, 4);
+  } else if (cleaned.length === 10) {
+    // US number without country code
+    areaCode = cleaned.substring(0, 3);
+  } else {
+    // International or invalid format
+    return 'unknown';
+  }
   
-  // VoIP/Toll-free numbers
-  const voipAreaCodes = ['800', '844', '855', '866', '877', '888'];
-  if (voipAreaCodes.includes(areaCode)) return 'voip';
+  // Toll-free numbers that should be filtered out for SMS
+  const tollFreeAreaCodes = ['800', '844', '855', '866', '877', '888', '833', '855', '856', '880', '881', '882', '883', '884', '885', '886', '887', '889'];
+  if (tollFreeAreaCodes.includes(areaCode)) return 'toll_free';
   
-  // Known business/landline patterns
-  if (areaCode.startsWith('555')) return 'landline';
-  
-  // Most US area codes can be mobile - we'll assume mobile for SMS eligibility
-  return 'mobile';
+  // All other valid US numbers are considered SMS eligible
+  // This is more reliable than trying to distinguish mobile vs landline
+  return 'sms_eligible';
 }
 
 function formatPhoneNumber(phone: string): string {
   const cleaned = phone.replace(/\D/g, '');
-  if (cleaned.length === 10) {
-    return `+1${cleaned}`;
-  } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
+  
+  // Handle US numbers with country code +1
+  if (cleaned.length === 11 && cleaned.startsWith('1')) {
     return `+${cleaned}`;
+  } else if (cleaned.length === 10) {
+    return `+1${cleaned}`;
   } else if (cleaned.length > 11) {
     // International number
     return `+${cleaned}`;
@@ -202,7 +213,7 @@ function standardizeFields(contacts: LeadData[]): FormattedLead[] {
       last_name: standardized.last_name || '',
       company: standardized.company || '',
       phone: standardized.phone || '',
-      phone_type: phoneType,
+      phone_type: phoneType === 'sms_eligible' ? 'mobile' : phoneType === 'toll_free' ? 'landline' : 'unknown',
       email: standardized.email || '',
       title: standardized.title || '',
       city: standardized.city || '',
@@ -210,7 +221,7 @@ function standardizeFields(contacts: LeadData[]): FormattedLead[] {
       country: standardized.country || '',
       industry: standardized.industry || '',
       website: standardized.website || '',
-      sms_eligible: phoneType === 'mobile',
+      sms_eligible: phoneType === 'sms_eligible',
       location: standardized.location || '',
       revenue: standardized.revenue || '',
       employees: standardized.employees || '',
@@ -295,15 +306,15 @@ function validateAndFormatLeads(leads: LeadData[]): ValidationResult {
     }
     
     // Count phone types
-    if (lead.phone_type === 'mobile') mobileCount++;
+    if (lead.sms_eligible) mobileCount++;
     else if (lead.phone_type === 'landline') landlineCount++;
     
     if (lead.email) emailCount++;
     if (lead.company) companyCount++;
     if (lead.name) nameCount++;
     
-    // Simple validation - has phone and some identity
-    const hasValidPhone = lead.phone && lead.phone_type !== 'unknown';
+    // Simple validation - has valid phone for SMS and some identity
+    const hasValidPhone = lead.phone && lead.sms_eligible;
     const hasIdentity = lead.name || lead.first_name || lead.company;
     
     if (hasValidPhone && hasIdentity) {
@@ -331,11 +342,13 @@ function validateAndFormatLeads(leads: LeadData[]): ValidationResult {
   // Always available system variables
   availableVariables.push('current_date', 'current_time', 'current_month', 'current_year');
   
-  // Analysis and suggestions
+  // Analysis and suggestions with clearer messaging
   if (mobileCount === 0) {
-    errors.push('No mobile phone numbers found. SMS campaigns require mobile numbers.');
+    errors.push('No SMS-eligible phone numbers found. Only toll-free numbers were detected.');
+    suggestions.push('Ensure your CSV contains standard US phone numbers (not toll-free 800, 888, etc.)');
   } else if (mobileCount < leads.length * 0.5) {
-    warnings.push(`Only ${mobileCount} out of ${leads.length} leads have mobile numbers. Consider filtering for mobile-only.`);
+    warnings.push(`Only ${mobileCount} out of ${leads.length} leads have SMS-eligible numbers. ${landlineCount} toll-free numbers filtered out.`);
+    suggestions.push('Consider filtering out toll-free numbers before upload for better SMS delivery rates.');
   }
   
   if (duplicatePhones > 0) {
@@ -443,14 +456,14 @@ export async function POST(request: NextRequest) {
     const validation = validateAndFormatLeads(leads);
     
     if (validationMode === 'fix' && validation.fixedData) {
-      // Remove duplicates and filter mobile-only
+      // Remove duplicates and filter SMS-eligible only
       const uniqueLeads = validation.fixedData.filter((lead, index, self) => 
         index === self.findIndex(l => l.phone === lead.phone)
       );
       
-      const mobileOnlyLeads = uniqueLeads.filter(lead => lead.sms_eligible);
+      const smsEligibleLeads = uniqueLeads.filter(lead => lead.sms_eligible);
       
-      const cleanedCSV = generateCleanedCSV(mobileOnlyLeads);
+      const cleanedCSV = generateCleanedCSV(smsEligibleLeads);
       
       return NextResponse.json({
         success: true,
@@ -460,9 +473,9 @@ export async function POST(request: NextRequest) {
         fileName: `cleaned_${file.name}`,
         summary: {
           originalCount: leads.length,
-          afterCleaning: mobileOnlyLeads.length,
-          removed: leads.length - mobileOnlyLeads.length,
-          duplicatesRemoved: uniqueLeads.length - mobileOnlyLeads.length,
+          afterCleaning: smsEligibleLeads.length,
+          removed: leads.length - smsEligibleLeads.length,
+          duplicatesRemoved: uniqueLeads.length - smsEligibleLeads.length,
           readyForCampaign: true
         }
       });
