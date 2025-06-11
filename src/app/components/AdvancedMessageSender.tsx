@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { SMSGatewayHealthChecker } from './SMSGatewayHealthChecker';
 import { SMSGatewayStatus } from './SMSGatewayStatus';
+import { saveCampaignResults, saveActivityLog, saveCleanedCSV } from '../../lib/supabase';
 
 interface ContactData {
   [key: string]: any;
@@ -432,6 +433,39 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
         success: true,
         message: `✅ Loaded ${contacts.length} contacts with ${headers.length} fields`
       });
+
+      // Save cleaned CSV to Supabase storage
+      try {
+        const username = typeof window !== 'undefined' ? 
+          localStorage.getItem('username') || 'unknown' : 'unknown';
+        
+        // Convert cleaned data back to CSV format
+        const csvRows = [
+          headers.join(','),
+          ...contacts.map(contact => 
+            headers.map(header => {
+              const key = header.toLowerCase().replace(/\s+/g, '_');
+              const value = (contact[key] || '').toString().replace(/"/g, '""');
+              return `"${value}"`;
+            }).join(',')
+          )
+        ];
+        const cleanedCsvData = csvRows.join('\n');
+        
+        const metadata = {
+          originalFilename: file.name,
+          originalSize: file.size,
+          cleanedContacts: contacts.length,
+          validPhones: phones.length,
+          processedAt: new Date().toISOString(),
+          headers: headers
+        };
+
+        await saveCleanedCSV(file.name, cleanedCsvData, username, metadata);
+        console.log('✅ Cleaned CSV saved to Supabase storage');
+      } catch (error) {
+        console.error('❌ Failed to save cleaned CSV:', error);
+      }
       
     } catch (error) {
       setSendStatus({
@@ -641,6 +675,22 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
           messageLength: singleMessage.length,
           timestamp: new Date().toISOString()
         });
+
+        // Save to Supabase storage
+        try {
+          const username = typeof window !== 'undefined' ? 
+            localStorage.getItem('username') || 'unknown' : 'unknown';
+          
+          await saveActivityLog(username, 'single_sms_sent', {
+            phone: formattedPhone,
+            messageLength: singleMessage.length,
+            message: singleMessage.substring(0, 100) + '...',
+            provider: smsProvider,
+            timestamp: new Date().toISOString()
+          });
+        } catch (error) {
+          console.error('Failed to save activity log:', error);
+        }
       } else {
         setSendStatus({
           success: false,
@@ -920,6 +970,27 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
             endTime: new Date().toISOString()
           })
         });
+      }
+
+      // Save campaign results to Supabase storage
+      try {
+        const username = typeof window !== 'undefined' ? 
+          localStorage.getItem('username') || 'unknown' : 'unknown';
+        
+        const finalReport = {
+          ...report,
+          successful: totalSuccessful,
+          failed: totalFailed,
+          pending: 0,
+          details,
+          endTime: new Date().toISOString(),
+          actualCost: (totalSuccessful * 0.0075).toFixed(2)
+        };
+
+        await saveCampaignResults(newCampaignId, finalReport, username);
+        console.log('✅ Campaign results saved to Supabase storage');
+      } catch (error) {
+        console.error('❌ Failed to save campaign results to storage:', error);
       }
 
       setSendStatus({

@@ -8,6 +8,7 @@ import { useActivityLogger } from './hooks/useActivityLogger';
 import { SMSService } from './lib/sms-service';
 import { AuthModal } from './components/AuthModal';
 import { PersonalSMSCredentials } from './components/PersonalSMSCredentials';
+import { StorageDashboard } from './components/StorageDashboard';
 import AccessDenied from '../components/AccessDenied';
 import HomeFeed from '../components/HomeFeed';
 import GBPTool from '../components/GBPTool';
@@ -89,6 +90,12 @@ const HomeIcon = () => (
 const TutorialsIcon = () => (
   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+  </svg>
+);
+
+const StorageIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
   </svg>
 );
 

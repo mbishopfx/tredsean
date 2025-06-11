@@ -1,10 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseUrl = 'https://bnrkzynwwrukchncdzus.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJucmt6eW53d3J1a2NobmNkenVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyNzQ0MDQsImV4cCI6MjA2NDg1MDQwNH0.mJGHvJQ83-4Sp3-guhv_KteEqMLxd9o59cDb_1Z_ooc';
+const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJucmt6eW53d3J1a2NobmNkenVzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTI3NDQwNCwiZXhwIjoyMDY0ODUwNDA0fQ.cS4fktp35ahxb-y_dw2EIsZO5iBnpmYfGA_cjfuoU2I';
 
-// Client for browser/frontend use
+// Client for browser usage
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Admin client for server-side operations
@@ -14,6 +14,164 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
     persistSession: false
   }
 });
+
+// Storage bucket name
+export const STORAGE_BUCKET = 'sms';
+
+// Helper functions for file operations
+export const uploadFile = async (
+  filePath: string, 
+  fileData: string | Blob | File, 
+  contentType?: string
+) => {
+  try {
+    const { data, error } = await supabaseAdmin.storage
+      .from(STORAGE_BUCKET)
+      .upload(filePath, fileData, {
+        contentType: contentType || 'application/json',
+        upsert: true // Overwrite if exists
+      });
+
+    if (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Failed to upload file:', error);
+    throw error;
+  }
+};
+
+export const downloadFile = async (filePath: string) => {
+  try {
+    const { data, error } = await supabaseAdmin.storage
+      .from(STORAGE_BUCKET)
+      .download(filePath);
+
+    if (error) {
+      console.error('Download error:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Failed to download file:', error);
+    throw error;
+  }
+};
+
+export const getPublicUrl = (filePath: string) => {
+  const { data } = supabaseAdmin.storage
+    .from(STORAGE_BUCKET)
+    .getPublicUrl(filePath);
+  
+  return data.publicUrl;
+};
+
+export const listFiles = async (folderPath?: string) => {
+  try {
+    const { data, error } = await supabaseAdmin.storage
+      .from(STORAGE_BUCKET)
+      .list(folderPath || '', {
+        limit: 100,
+        offset: 0
+      });
+
+    if (error) {
+      console.error('List files error:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Failed to list files:', error);
+    throw error;
+  }
+};
+
+// Utility functions for specific data types
+export const saveCampaignResults = async (
+  campaignId: string,
+  results: any,
+  username: string
+) => {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const filePath = `campaigns/${username}/${campaignId}_${timestamp}.json`;
+  
+  const campaignData = {
+    campaignId,
+    username,
+    timestamp: new Date().toISOString(),
+    results,
+    metadata: {
+      totalContacts: results.totalRecipients || 0,
+      successful: results.successful || 0,
+      failed: results.failed || 0,
+      messagePreview: results.messagePreview || ''
+    }
+  };
+
+  return await uploadFile(filePath, JSON.stringify(campaignData, null, 2));
+};
+
+export const saveCleanedCSV = async (
+  filename: string,
+  csvData: string,
+  username: string,
+  metadata?: any
+) => {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const filePath = `cleaned-csvs/${username}/${timestamp}_${filename}`;
+  
+  // Save the CSV data
+  await uploadFile(filePath, csvData, 'text/csv');
+  
+  // Save metadata if provided
+  if (metadata) {
+    const metadataPath = `cleaned-csvs/${username}/${timestamp}_${filename}.meta.json`;
+    await uploadFile(metadataPath, JSON.stringify(metadata, null, 2));
+  }
+
+  return filePath;
+};
+
+export const saveActivityLog = async (
+  username: string,
+  action: string,
+  details: any
+) => {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const filePath = `activity-logs/${username}/${timestamp}_${action}.json`;
+  
+  const logData = {
+    username,
+    action,
+    timestamp: new Date().toISOString(),
+    details
+  };
+
+  return await uploadFile(filePath, JSON.stringify(logData, null, 2));
+};
+
+export const savePost = async (
+  postId: string,
+  postData: any,
+  username: string
+) => {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const filePath = `posts/${username}/${postId}_${timestamp}.json`;
+  
+  const fullPostData = {
+    postId,
+    username,
+    timestamp: new Date().toISOString(),
+    ...postData
+  };
+
+  return await uploadFile(filePath, JSON.stringify(fullPostData, null, 2));
+};
 
 // Database types for TypeScript
 export interface AuditRecord {
