@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { SMSGatewayHealthChecker } from './SMSGatewayHealthChecker';
+import { SMSGatewayStatus } from './SMSGatewayStatus';
 
 interface ContactData {
   [key: string]: any;
@@ -541,17 +542,52 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
       let response;
       
       if (smsProvider === 'jon-device') {
-        // Use Jon's SMS Gateway device - simplified API
-        response = await fetch('/api/sms-gateway/send-jon-simple', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            phoneNumber: formattedPhone,
-            message: singleMessage
-          }),
-        });
+        // Check if user has their own SMS Gateway credentials
+        const userSMSGateway = typeof window !== 'undefined' ? 
+          localStorage.getItem('userSMSGateway') : null;
+        
+        if (userSMSGateway) {
+          try {
+            const credentials = JSON.parse(userSMSGateway);
+            // Use user's personal SMS Gateway device
+            response = await fetch('/api/sms-gateway/send-user-sms', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                phoneNumber: formattedPhone,
+                message: singleMessage,
+                userCredentials: credentials
+              }),
+            });
+          } catch (error) {
+            console.error('Error parsing user SMS Gateway credentials:', error);
+            // Fallback to Jon's device
+            response = await fetch('/api/sms-gateway/send-jon-simple', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                phoneNumber: formattedPhone,
+                message: singleMessage
+              }),
+            });
+          }
+        } else {
+          // Fallback to Jon's device if no user credentials
+          response = await fetch('/api/sms-gateway/send-jon-simple', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              phoneNumber: formattedPhone,
+              message: singleMessage
+            }),
+          });
+        }
       } else {
         // Use personal SMS Gateway credentials
         const storedCredentials = localStorage.getItem('personalSMSCredentials');
@@ -754,17 +790,52 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
           let response;
           
           if (smsProvider === 'jon-device') {
-            // Use Jon's SMS Gateway device - simplified API
-            response = await fetch('/api/sms-gateway/send-jon-simple', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                phoneNumber: formattedPhone,
-                message: personalizedMessage
-              }),
-            });
+            // Check if user has their own SMS Gateway credentials
+            const userSMSGateway = typeof window !== 'undefined' ? 
+              localStorage.getItem('userSMSGateway') : null;
+            
+            if (userSMSGateway) {
+              try {
+                const credentials = JSON.parse(userSMSGateway);
+                // Use user's personal SMS Gateway device
+                response = await fetch('/api/sms-gateway/send-user-sms', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    phoneNumber: formattedPhone,
+                    message: personalizedMessage,
+                    userCredentials: credentials
+                  }),
+                });
+              } catch (error) {
+                console.error('Error parsing user SMS Gateway credentials:', error);
+                // Fallback to Jon's device
+                response = await fetch('/api/sms-gateway/send-jon-simple', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    phoneNumber: formattedPhone,
+                    message: personalizedMessage
+                  }),
+                });
+              }
+            } else {
+              // Fallback to Jon's device if no user credentials
+              response = await fetch('/api/sms-gateway/send-jon-simple', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  phoneNumber: formattedPhone,
+                  message: personalizedMessage
+                }),
+              });
+            }
           } else {
             // Use personal SMS Gateway credentials
             response = await fetch('/api/sms/send', {
@@ -924,6 +995,9 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
           <div className="xl:col-span-2 space-y-6">
             {/* SMS Gateway Health Status */}
             <SMSGatewayHealthChecker />
+            
+            {/* User's SMS Gateway Status */}
+            <SMSGatewayStatus />
             
             {/* Single Message Composer */}
             <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">

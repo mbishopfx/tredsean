@@ -281,6 +281,7 @@ function DashboardContent() {
           const savedUsername = localStorage.getItem('username');
           const savedDisplayName = localStorage.getItem('displayName');
           const savedPersonalSMS = localStorage.getItem('personalSMSCredentials');
+          const savedSMSGateway = localStorage.getItem('userSMSGateway');
           
           if (savedAuth === 'true' && savedRole && savedUsername) {
             // User is already authenticated
@@ -624,10 +625,12 @@ function DashboardContent() {
     setShowSiteAuth(false);
     setShowTrdAuth(false);
     
-    // If user has personal SMS credentials, set them up automatically
-    if (userInfo?.personalSMS) {
-      setPersonalSMSCredentials(userInfo.personalSMS);
-      setSmsProvider('personal'); // Default to personal SMS for team members
+    // If user has SMS Gateway credentials, store them for use
+    if (userInfo?.smsGateway) {
+      // Store SMS Gateway credentials for this user
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('userSMSGateway', JSON.stringify(userInfo.smsGateway));
+      }
     }
     
     localStorage.setItem('isAuthenticated', 'true');
@@ -637,6 +640,10 @@ function DashboardContent() {
     
     if (userInfo?.personalSMS) {
       localStorage.setItem('personalSMSCredentials', JSON.stringify(userInfo.personalSMS));
+    }
+    
+    if (userInfo?.smsGateway) {
+      localStorage.setItem('userSMSGateway', JSON.stringify(userInfo.smsGateway));
     }
     
     logActivity('user_authenticated', { role, username, displayName });
@@ -1095,18 +1102,55 @@ function DashboardContent() {
       const phoneNumber = selectedConversation.replace(/^(sms_gateway_|twilio_)/, '');
       
       if (smsProviderTab === 'sms-gateway') {
-        // Use Jon's SMS Gateway device for all SMS Gateway conversations
-        console.log('📱 Sending reply via Jon\'s device to:', phoneNumber);
-        response = await fetch('/api/sms-gateway/send-jon-simple', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            phoneNumber: phoneNumber,
-            message: chatMessage
-          }),
-        });
+        // Check if user has their own SMS Gateway credentials
+        const userSMSGateway = typeof window !== 'undefined' ? 
+          localStorage.getItem('userSMSGateway') : null;
+        
+        if (userSMSGateway) {
+          try {
+            const credentials = JSON.parse(userSMSGateway);
+            console.log('📱 Sending reply via user\'s device to:', phoneNumber);
+            // Use user's personal SMS Gateway device
+            response = await fetch('/api/sms-gateway/send-user-sms', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                phoneNumber: phoneNumber,
+                message: chatMessage,
+                userCredentials: credentials
+              }),
+            });
+          } catch (error) {
+            console.error('Error parsing user SMS Gateway credentials:', error);
+            // Fallback to Jon's device
+            console.log('📱 Sending reply via Jon\'s device (fallback) to:', phoneNumber);
+            response = await fetch('/api/sms-gateway/send-jon-simple', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                phoneNumber: phoneNumber,
+                message: chatMessage
+              }),
+            });
+          }
+        } else {
+          // Fallback to Jon's device if no user credentials
+          console.log('📱 Sending reply via Jon\'s device (no user creds) to:', phoneNumber);
+          response = await fetch('/api/sms-gateway/send-jon-simple', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              phoneNumber: phoneNumber,
+              message: chatMessage
+            }),
+          });
+        }
       } else {
         // Use Twilio SMS (if endpoint exists)
         response = await fetch('/api/twilio/conversations/send', {

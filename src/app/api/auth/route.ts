@@ -2,88 +2,90 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const SUPER_USER_PASSWORD = 'Babydeathstroke11!';
 
-// Pre-assigned user credentials
+// Pre-assigned user credentials with hard-coded SMS Gateway settings
 const TEAM_USERS = {
   'Jontrd': {
     password: 'Babydeathstroke11!',
     displayName: 'Jon',
     role: 'team_member',
-    personalSMS: {
-      provider: 'smsdove',
-      token: '', // Jon's SMS Dove token (to be provided)
-      accountId: '' // Jon's SMS Dove account ID (to be provided)
+    smsGateway: {
+      cloudUsername: 'AD2XA0',
+      cloudPassword: '2nitkjiqnmrrtc',
+      deviceName: 'Samsung (Total Wireless)',
+      status: 'active',
+      notes: 'Primary working device - GUARANTEED delivery'
     }
   },
   'Jessetrd': {
     password: 'Truerankprezzy123!',
     displayName: 'Jesse', 
     role: 'admin',
-    personalSMS: {
-      provider: 'smsdove',
-      token: '', // Jesse's SMS Dove token (to be provided)
-      accountId: '' // Jesse's SMS Dove account ID (to be provided)
+    smsGateway: {
+      cloudUsername: 'PLACEHOLDER_USERNAME',
+      cloudPassword: 'PLACEHOLDER_PASSWORD',
+      deviceName: 'Pending Setup',
+      status: 'pending',
+      notes: 'Awaiting SMS Gateway credentials'
     }
   },
   'Dantrd': {
     password: 'TrdPakistan123!',
     displayName: 'Danny',
     role: 'team_member', 
-    personalSMS: {
-      provider: 'smsdove',
-      token: '', // Danny's SMS Dove token (to be provided)
-      accountId: '' // Danny's SMS Dove account ID (to be provided)
+    smsGateway: {
+      cloudUsername: 'PLACEHOLDER_USERNAME',
+      cloudPassword: 'PLACEHOLDER_PASSWORD',
+      deviceName: 'Pending Setup',
+      status: 'pending',
+      notes: 'Awaiting SMS Gateway credentials'
     }
   },
   'Josetrd': {
     password: 'TeamElite123!',
     displayName: 'Jose',
     role: 'team_member',
-    personalSMS: {
-      provider: 'smsgateway',
-      email: '', // Jose's SMS Gateway email (to be provided)
-      password: '', // Jose's SMS Gateway password (to be provided)
-      cloudUsername: '', // Jose's cloud credentials (to be provided)
-      cloudPassword: '', // Jose's cloud credentials (to be provided)
-      endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
+    smsGateway: {
+      cloudUsername: 'PLACEHOLDER_USERNAME',
+      cloudPassword: 'PLACEHOLDER_PASSWORD',
+      deviceName: 'Pending Setup',
+      status: 'pending',
+      notes: 'Awaiting SMS Gateway credentials'
     }
   },
   'Juantrd': {
     password: 'TeamElite124!',
     displayName: 'Juan',
     role: 'team_member',
-    personalSMS: {
-      provider: 'smsgateway',
-      email: '', // Juan's SMS Gateway email (to be provided)
-      password: '', // Juan's SMS Gateway password (to be provided)
-      cloudUsername: '', // Juan's cloud credentials (to be provided)
-      cloudPassword: '', // Juan's cloud credentials (to be provided)
-      endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
+    smsGateway: {
+      cloudUsername: 'PLACEHOLDER_USERNAME',
+      cloudPassword: 'PLACEHOLDER_PASSWORD',
+      deviceName: 'Pending Setup',
+      status: 'pending',
+      notes: 'Awaiting SMS Gateway credentials'
     }
   },
   'Matttrd': {
     password: 'admin123!',
     displayName: 'Matt (Sean)',
     role: 'admin',
-    personalSMS: {
-      provider: 'smsgateway',
-      email: 'sean@trurankdigital.com', // Keep this for UI display
-      password: 'Croatia5376!', // Keep this for UI display  
-      cloudUsername: 'AUZNLR', // Actual cloud credentials
-      cloudPassword: 'mpx-bhqzhm8bvg', // Actual cloud credentials
-      endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
+    smsGateway: {
+      cloudUsername: 'PLACEHOLDER_USERNAME', 
+      cloudPassword: 'PLACEHOLDER_PASSWORD',
+      deviceName: 'Pending Setup',
+      status: 'pending',
+      notes: 'Awaiting Sean\'s SMS Gateway setup'
     }
   },
   'Seantrd': {
     password: 'Croatia123!',
     displayName: 'Sean',
     role: 'admin',
-    personalSMS: {
-      provider: 'smsgateway',
-      email: 'sean@trurankdigital.com', // Keep this for UI display
-      password: 'Croatia5376!', // Keep this for UI display  
-      cloudUsername: 'AUZNLR', // Actual cloud credentials
-      cloudPassword: 'mpx-bhqzhm8bvg', // Actual cloud credentials
-      endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
+    smsGateway: {
+      cloudUsername: 'PLACEHOLDER_USERNAME',
+      cloudPassword: 'PLACEHOLDER_PASSWORD', 
+      deviceName: 'Pending Setup',
+      status: 'pending',
+      notes: 'Getting SMS Gateway tonight - will update credentials'
     }
   }
 };
@@ -176,7 +178,7 @@ export async function POST(request: NextRequest) {
         userInfo: userInfo ? {
           username: username,
           displayName: userInfo.displayName,
-          personalSMS: userInfo.personalSMS
+          smsGateway: userInfo.smsGateway
         } : null,
         message: 'Authentication successful'
       });
