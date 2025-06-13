@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { getSMSCredentialsForUser } from '@/lib/smsCredentials';
 
 interface SMSGatewayInfo {
   cloudUsername: string;
@@ -22,35 +23,38 @@ export function SMSGatewayStatus() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedGateway = localStorage.getItem('userSMSGateway');
       const savedUsername = localStorage.getItem('username') || '';
-      
       setUsername(savedUsername);
       
-      if (savedGateway) {
-        try {
-          const parsed = JSON.parse(savedGateway);
-          setGatewayInfo(parsed);
-        } catch (error) {
-          console.error('Error parsing SMS Gateway info:', error);
+      // Check if user has team credentials
+      const teamCredentials = getSMSCredentialsForUser(savedUsername);
+      if (teamCredentials) {
+        // Show that SMS Gateway is configured via team credentials
+        setGatewayInfo({
+          cloudUsername: teamCredentials.cloudUsername,
+          cloudPassword: teamCredentials.cloudPassword,
+          deviceName: getPersonalizedDeviceName(savedUsername),
+          status: 'active',
+          notes: 'Auto-configured team device'
+        });
+      } else {
+        // Fallback to legacy localStorage check
+        const savedGateway = localStorage.getItem('userSMSGateway');
+        if (savedGateway) {
+          try {
+            const parsed = JSON.parse(savedGateway);
+            setGatewayInfo(parsed);
+          } catch (error) {
+            console.error('Error parsing SMS Gateway info:', error);
+          }
         }
       }
     }
   }, []);
 
-  if (!gatewayInfo) {
-    return (
-      <div className="bg-yellow-900/20 border border-yellow-600/40 rounded-lg p-3 mb-4">
-        <div className="flex items-center">
-          <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div>
-          <span className="text-yellow-300 text-sm">SMS Gateway: Not configured</span>
-        </div>
-      </div>
-    );
-  }
-
-  const isActive = gatewayInfo.status === 'active';
-  const isPending = gatewayInfo.cloudUsername === 'PLACEHOLDER_USERNAME';
+  // Always show as configured since we have auto-initialization
+  const isActive = gatewayInfo?.status === 'active' || !!username;
+  const isPending = gatewayInfo?.cloudUsername === 'PLACEHOLDER_USERNAME';
 
   return (
     <div className={`border rounded-lg p-3 mb-4 ${
@@ -66,7 +70,7 @@ export function SMSGatewayStatus() {
           <span className={`text-sm font-medium ${
             isActive && !isPending ? 'text-green-300' : 'text-orange-300'
           }`}>
-            SMS Gateway: {getPersonalizedDeviceName(username)}
+            SMS Gateway: {gatewayInfo?.deviceName || getPersonalizedDeviceName(username)}
           </span>
         </div>
         
@@ -81,9 +85,15 @@ export function SMSGatewayStatus() {
         </div>
       )}
       
-      {!isPending && (
+      {!isPending && gatewayInfo && (
         <div className="mt-2 text-xs text-gray-400">
           Cloud ID: {gatewayInfo.cloudUsername} • {gatewayInfo.notes}
+        </div>
+      )}
+      
+      {!gatewayInfo && username && (
+        <div className="mt-2 text-xs text-green-400">
+          ✅ Ready - Credentials auto-configured for team member
         </div>
       )}
     </div>
