@@ -74,7 +74,7 @@ The description should convince business owners of the value of having a profess
     
     // Format the payload for OpenAI API
     const payload = {
-      model: "gpt-4-turbo",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",

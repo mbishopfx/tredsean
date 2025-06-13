@@ -2,6 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Formatted content styles */
+.formatted-content {
+  line-height: 1.6;
+}
+
+.formatted-content h2 {
+  @apply text-xl font-bold text-primary mt-6 mb-3 border-b border-tech-border/20 pb-2;
+}
+
+.formatted-content h3 {
+  @apply text-lg font-semibold text-accent mt-4 mb-2;
+}
+
+.formatted-content p {
+  @apply mb-4 text-tech-foreground leading-relaxed;
+}
+
+.formatted-content ul {
+  @apply list-disc list-inside mb-4 ml-4 space-y-1;
+}
+
+.formatted-content li {
+  @apply text-tech-foreground leading-relaxed;
+}
+
+.formatted-content strong {
+  @apply font-bold text-primary;
+}
+
+.formatted-content .subject-line {
+  @apply bg-tech-secondary/30 p-3 rounded-lg mb-4 border-l-4 border-accent;
+}
+
 :root {
   --background: #161b22;
   --foreground: #f0f6fc;

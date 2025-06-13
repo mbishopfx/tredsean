@@ -52,35 +52,74 @@ const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate }) => {
     return username === 'Matttrd' || username === 'Jontrd' || username === 'Jessetrd';
   };
 
-  // Load posts from localStorage
+  // Load posts from Supabase
   useEffect(() => {
-    const savedPosts = localStorage.getItem('trd_feed_posts');
-    if (savedPosts) {
+    const loadPosts = async () => {
       try {
-        const parsedPosts = JSON.parse(savedPosts).map((post: any) => ({
-          ...post,
-          timestamp: new Date(post.timestamp),
-          comments: post.comments?.map((comment: any) => ({
-            ...comment,
-            timestamp: new Date(comment.timestamp)
-          })) || []
-        }));
-        setPosts(parsedPosts);
+        const username = localStorage.getItem('username') || 'anonymous';
+        const response = await fetch(`/api/supabase/get-posts?username=${username}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.posts && data.posts.length > 0) {
+            const parsedPosts = data.posts.map((post: any) => ({
+              id: post.id,
+              author: post.author,
+              authorRole: post.author_role,
+              content: post.content,
+              timestamp: new Date(post.timestamp),
+              type: post.post_type,
+              likes: post.likes || 0,
+              comments: post.comments?.map((comment: any) => ({
+                ...comment,
+                timestamp: new Date(comment.timestamp)
+              })) || [],
+              aiGenerated: post.ai_generated || false,
+              category: post.category
+            }));
+            setPosts(parsedPosts);
+            return;
+          }
+        }
       } catch (error) {
-        console.error('Error loading posts:', error);
+        console.error('Failed to load posts from Supabase:', error);
       }
-    } else {
-      // Add some initial AI-generated posts
-      generateInitialPosts();
-    }
+
+      // Only show empty state if no posts loaded from Supabase
+      setPosts([]);
+    };
+
+    loadPosts();
   }, []);
 
-  // Save posts to localStorage
-  const savePosts = (postsToSave: Post[]) => {
-    localStorage.setItem('trd_feed_posts', JSON.stringify(postsToSave));
+  // Save posts to Supabase
+  const savePosts = async (postsToSave: Post[]) => {
+    try {
+      const username = localStorage.getItem('username') || 'anonymous';
+      
+      // Only save the latest post to Supabase (the first one in the array)
+      if (postsToSave.length > 0) {
+        const latestPost = postsToSave[0];
+        
+        const response = await fetch('/api/supabase/save-post', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            post: latestPost,
+            username
+          })
+        });
+
+        if (!response.ok) {
+          console.error('Failed to save post to Supabase');
+        }
+      }
+    } catch (error) {
+      console.error('Error saving posts to Supabase:', error);
+    }
   };
 
-  // High-Level TRD Tips & Insights
+  // High-Level TRD Tips & Insights - keeping for reference but not auto-generating
   const trdHighLevelTips = [
     "💡 SEO Psychology: People trust Google's judgment. Being #1 makes you the automatic expert in their minds.",
     "🎯 Local SEO Truth: 76% of people who search for something nearby visit a business within 24 hours. Make sure it's yours.",
@@ -93,59 +132,6 @@ const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate }) => {
     "💬 Reviews Drive Revenue: Each additional star in your rating can increase revenue by 5-19% according to Harvard research.",
     "🔗 Link Building Strategy: One high-quality backlink from a local authority site beats 100 low-quality directory submissions."
   ];
-
-  // Generate AI content for the feed
-  const generateAIPost = async () => {
-    const randomTip = trdHighLevelTips[Math.floor(Math.random() * trdHighLevelTips.length)];
-    
-    const categories = [
-      "SEO Tips", "Local SEO", "Technical SEO", "Content Marketing", 
-      "Link Building", "Analytics", "Mobile SEO", "Voice Search"
-    ];
-    
-    return {
-      content: randomTip,
-      category: categories[Math.floor(Math.random() * categories.length)]
-    };
-  };
-
-  // Generate initial posts
-  const generateInitialPosts = async () => {
-    const initialPosts: Post[] = [
-      {
-        id: Date.now().toString(),
-        author: 'TRD AI Coach',
-        authorRole: 'AI Marketing Assistant',
-        content: 'Welcome to the TRD Team Feed! 🚀 This is your central hub for team updates, AI-powered insights, and marketing wisdom. I\'ll be sharing daily tips to help you dominate local search and close more deals. Let\'s make this quarter legendary! 💪',
-        timestamp: new Date(),
-        type: 'ai',
-        likes: 0,
-        comments: [],
-        aiGenerated: true,
-        category: 'Welcome'
-      }
-    ];
-
-    // Add some recent AI tips
-    for (let i = 0; i < 3; i++) {
-      const aiContent = await generateAIPost();
-      initialPosts.push({
-        id: `ai_${Date.now() + i}`,
-        author: 'TRD AI Coach',
-        authorRole: 'AI Marketing Assistant',
-        content: aiContent.content,
-        timestamp: new Date(Date.now() - (i * 2 * 60 * 60 * 1000)), // Stagger by 2 hours
-        type: 'ai',
-        likes: Math.floor(Math.random() * 5),
-        comments: [],
-        aiGenerated: true,
-        category: aiContent.category
-      });
-    }
-
-    setPosts(initialPosts);
-    savePosts(initialPosts);
-  };
 
   const handleSubmitPost = async () => {
     if (!newPost.trim()) return;
@@ -166,7 +152,7 @@ const HomeFeed: React.FC<HomeFeedProps> = ({ onNavigate }) => {
 
     const updatedPosts = [post, ...posts];
     setPosts(updatedPosts);
-    savePosts(updatedPosts);
+    await savePosts(updatedPosts);
     
     setNewPost('');
     setIsPosting(false);

@@ -2141,5 +2141,35 @@
       "username": "Jontrd",
       "displayName": "Jon"
     }
+  },
+  {
+    "timestamp": "2025-06-13T05:23:36.271Z",
+    "user": "Josetrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Josetrd",
+      "displayName": "Jose"
+    }
+  },
+  {
+    "timestamp": "2025-06-13T05:35:30.443Z",
+    "user": "Seantrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "admin",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-13T05:43:50.471Z",
+    "user": "Seantrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "admin",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
   }
 ]

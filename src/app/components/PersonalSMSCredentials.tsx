@@ -6,6 +6,8 @@ interface PersonalSMSCredentials {
   provider: 'smsmobile' | 'smsdove' | 'smsgateway';
   email?: string;
   password?: string;
+  cloudUsername?: string;
+  cloudPassword?: string;
 }
 
 interface PersonalSMSCredentialsProps {
@@ -20,7 +22,9 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
     deviceId: '',
     provider: 'smsgateway',
     email: '',
-    password: ''
+    password: '',
+    cloudUsername: '',
+    cloudPassword: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -36,8 +40,10 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
           apiKey: '',
           deviceId: '',
           provider: 'smsgateway',
-          email: 'sean@trurankdigital.com',
-          password: 'Croatia5376!'
+          email: '',
+          password: '',
+          cloudUsername: 'YH1NKV',
+          cloudPassword: 'obiwpwuzrx5lip'
         });
       }
     }
@@ -50,8 +56,12 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
 
     // Validate credentials based on provider
     if (credentials.provider === 'smsgateway') {
-      if (!credentials.email || !credentials.password) {
-        setError('Please fill in email and password for SMS Gateway');
+      // Check for either email/password OR cloudUsername/cloudPassword
+      const hasEmailPassword = credentials.email && credentials.password;
+      const hasCloudCredentials = credentials.cloudUsername && credentials.cloudPassword;
+      
+      if (!hasEmailPassword && !hasCloudCredentials) {
+        setError('Please fill in email/password or cloudUsername/cloudPassword for SMS Gateway');
         setLoading(false);
         return;
       }
@@ -68,7 +78,7 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
       // You could add a test endpoint here if needed
       onSave(credentials);
       onClose();
-      setCredentials({ apiKey: '', deviceId: '', provider: 'smsgateway', email: '', password: '' });
+      setCredentials({ apiKey: '', deviceId: '', provider: 'smsgateway', email: '', password: '', cloudUsername: '', cloudPassword: '' });
     } catch (error) {
       setError('Failed to validate credentials. Please check and try again.');
     } finally {
@@ -124,39 +134,77 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
 
           {credentials.provider === 'smsgateway' ? (
             <>
-              <div className="mb-4">
-                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                  Email {isSeanAccount && <span className="text-green-400">(Pre-configured)</span>}
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  value={credentials.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  className="w-full px-3 py-2 bg-tech-secondary border border-tech-border rounded-md text-tech-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Enter your SMS Gateway email"
-                  required
-                  readOnly={isSeanAccount}
-                  disabled={isSeanAccount}
-                />
-              </div>
+              {isSeanAccount ? (
+                // Show cloud credentials for Sean
+                <>
+                  <div className="mb-4">
+                    <label htmlFor="cloudUsername" className="block text-sm font-medium text-gray-300 mb-2">
+                      Cloud Username <span className="text-green-400">(Pre-configured)</span>
+                    </label>
+                    <input
+                      id="cloudUsername"
+                      type="text"
+                      value={credentials.cloudUsername}
+                      onChange={(e) => handleInputChange('cloudUsername', e.target.value)}
+                      className="w-full px-3 py-2 bg-tech-secondary border border-tech-border rounded-md text-tech-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="Enter your SMS Gateway cloud username"
+                      required
+                      readOnly={isSeanAccount}
+                      disabled={isSeanAccount}
+                    />
+                  </div>
 
-              <div className="mb-4">
-                <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-                  Password {isSeanAccount && <span className="text-green-400">(Pre-configured)</span>}
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  value={credentials.password}
-                  onChange={(e) => handleInputChange('password', e.target.value)}
-                  className="w-full px-3 py-2 bg-tech-secondary border border-tech-border rounded-md text-tech-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Enter your SMS Gateway password"
-                  required
-                  readOnly={isSeanAccount}
-                  disabled={isSeanAccount}
-                />
-              </div>
+                  <div className="mb-4">
+                    <label htmlFor="cloudPassword" className="block text-sm font-medium text-gray-300 mb-2">
+                      Cloud Password <span className="text-green-400">(Pre-configured)</span>
+                    </label>
+                    <input
+                      id="cloudPassword"
+                      type="password"
+                      value={credentials.cloudPassword}
+                      onChange={(e) => handleInputChange('cloudPassword', e.target.value)}
+                      className="w-full px-3 py-2 bg-tech-secondary border border-tech-border rounded-md text-tech-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="Enter your SMS Gateway cloud password"
+                      required
+                      readOnly={isSeanAccount}
+                      disabled={isSeanAccount}
+                    />
+                  </div>
+                </>
+              ) : (
+                // Show regular email/password for other users
+                <>
+                  <div className="mb-4">
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+                      Email
+                    </label>
+                    <input
+                      id="email"
+                      type="email"
+                      value={credentials.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      className="w-full px-3 py-2 bg-tech-secondary border border-tech-border rounded-md text-tech-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="Enter your SMS Gateway email"
+                      required
+                    />
+                  </div>
+
+                  <div className="mb-4">
+                    <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+                      Password
+                    </label>
+                    <input
+                      id="password"
+                      type="password"
+                      value={credentials.password}
+                      onChange={(e) => handleInputChange('password', e.target.value)}
+                      className="w-full px-3 py-2 bg-tech-secondary border border-tech-border rounded-md text-tech-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="Enter your SMS Gateway password"
+                      required
+                    />
+                  </div>
+                </>
+              )}
             </>
           ) : (
             <>

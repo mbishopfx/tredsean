@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     
     // Format the payload for OpenAI API
     const payload = {
-      model: "gpt-4-turbo",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",

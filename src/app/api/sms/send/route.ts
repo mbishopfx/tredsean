@@ -63,11 +63,21 @@ export async function POST(request: NextRequest) {
       if (credentials.provider === 'smsgateway') {
         console.log('📱 Attempting SMS Gateway integration...');
         
-        if (!credentials.email || !credentials.password) {
-          console.error('❌ SMS Gateway: Missing email or password');
+        // Check for either email/password OR cloudUsername/cloudPassword
+        const hasEmailPassword = credentials.email && credentials.password;
+        const hasCloudCredentials = credentials.cloudUsername && credentials.cloudPassword;
+        
+        if (!hasEmailPassword && !hasCloudCredentials) {
+          console.error('❌ SMS Gateway: Missing credentials');
+          console.log('Available credentials:', {
+            hasEmail: !!credentials.email,
+            hasPassword: !!credentials.password,
+            hasCloudUsername: !!credentials.cloudUsername,
+            hasCloudPassword: !!credentials.cloudPassword
+          });
           return NextResponse.json({ 
             success: false, 
-            error: 'Email and password are required for SMS Gateway' 
+            error: 'Email/password or cloudUsername/cloudPassword are required for SMS Gateway' 
           }, { status: 400 });
         }
 
@@ -100,8 +110,8 @@ export async function POST(request: NextRequest) {
                   method: 'POST',
                   headers: {
                    'Content-Type': 'application/json',
-                   'Authorization': credentials.provider === 'smsgateway' && (credentials as any).cloudUsername && (credentials as any).cloudPassword
-                     ? `Basic ${Buffer.from((credentials as any).cloudUsername + ':' + (credentials as any).cloudPassword).toString('base64')}`
+                   'Authorization': credentials.cloudUsername && credentials.cloudPassword
+                     ? `Basic ${Buffer.from(credentials.cloudUsername + ':' + credentials.cloudPassword).toString('base64')}`
                      : `Basic ${Buffer.from(credentials.email + ':' + credentials.password).toString('base64')}`
                  },
                   body: JSON.stringify({

@@ -103,13 +103,16 @@ interface ValidationResponse {
 
 interface CSVValidatorProps {
   onValidationComplete?: (result: ValidationResponse) => void;
+  onAutoStage?: (csvData: string, fileName: string) => void;
 }
 
-export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
+export function CSVValidator({ onValidationComplete, onAutoStage }: CSVValidatorProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidationResponse | null>(null);
   const [isFixing, setIsFixing] = useState(false);
+  const [autoStaged, setAutoStaged] = useState(false);
+  const [showAutoStageAlert, setShowAutoStageAlert] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dncFile, setDncFile] = useState<File | null>(null);
   const [dncNumbers, setDncNumbers] = useState<string[]>(() => {
@@ -238,6 +241,18 @@ export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
       if (response.ok) {
         setValidationResult(result);
         onValidationComplete?.(result);
+        
+        // Auto-stage if cleaned CSV is available and ready for campaign
+        if (result.cleanedCSV && result.readyForCampaign && onAutoStage && !autoStaged) {
+          onAutoStage(result.cleanedCSV, result.fileName || file?.name || 'cleaned_leads.csv');
+          setAutoStaged(true);
+          setShowAutoStageAlert(true);
+          
+          // Hide alert after 5 seconds
+          setTimeout(() => {
+            setShowAutoStageAlert(false);
+          }, 5000);
+        }
       } else {
         console.error('Validation error:', result);
         setValidationResult({
@@ -326,10 +341,37 @@ export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
         <div>
           <h3 className="text-lg font-semibold text-tech-foreground">CSV Lead Validator</h3>
           <p className="text-sm text-gray-400">
-            Validate and fix your lead CSV files for mass messaging and drip campaigns
+            Validate and clean your lead CSV files with automatic campaign staging
           </p>
         </div>
       </div>
+
+      {/* Auto-Stage Success Alert */}
+      {showAutoStageAlert && (
+        <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 border border-green-500/30 rounded-lg p-4 animate-pulse">
+          <div className="flex items-center space-x-3">
+            <div className="flex-shrink-0">
+              <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-green-400 font-semibold">🎉 CSV Auto-Staged Successfully!</p>
+              <p className="text-sm text-gray-300 mt-1">
+                Your cleaned CSV has been automatically loaded into the mass messaging system. You can still download it below if needed.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowAutoStageAlert(false)}
+              className="text-gray-400 hover:text-gray-300 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* File Upload Area */}
       {!file && (

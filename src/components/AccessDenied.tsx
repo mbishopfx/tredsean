@@ -53,11 +53,11 @@ const AccessDenied: React.FC<AccessDeniedProps> = ({
           
           {/* Message */}
           <p className="text-gray-700 dark:text-gray-300 mb-2 leading-relaxed">
-            The <span className="font-semibold text-accent">{restrictedPage}</span> page is restricted to authorized users only.
+            This page is restricted for admins. Please contact the team.
           </p>
           
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-            Authorized users: <span className="font-medium text-accent">{allowedUsers.join(', ')}</span>
+            If you believe you should have access, please reach out to an administrator.
           </p>
           
           {/* Contact info */}

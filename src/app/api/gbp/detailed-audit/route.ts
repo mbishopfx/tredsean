@@ -207,7 +207,7 @@ async function generateDetailedAuditWithAI(websiteData: any, businessName: strin
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4-turbo',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
