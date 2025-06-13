@@ -350,10 +350,47 @@ export class AuditStorage {
       console.error('Error saving to user history:', error);
     }
   }
+
+  // Get audit by ID
+  static async getAuditById(auditId: string): Promise<AuditRecord | null> {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('audits')
+        .select('*')
+        .eq('audit_id', auditId)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') return null; // Not found
+        throw error;
+      }
+      return data;
+    } catch (error) {
+      console.error('Error fetching audit:', error);
+      return null;
+    }
+  }
 }
 
 export class ReportStorage {
   
+  // Upload report file to storage
+  static async uploadReport(filePath: string, fileData: Buffer, contentType: string): Promise<void> {
+    try {
+      const { error } = await supabaseAdmin.storage
+        .from('audit-reports')
+        .upload(filePath, fileData, {
+          contentType,
+          upsert: true
+        });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error uploading report:', error);
+      throw error;
+    }
+  }
+
   // Save report metadata
   static async saveReport(auditId: string, reportType: 'basic' | 'detailed' | 'sales_pitch', fileName: string, filePath: string, username?: string): Promise<void> {
     try {
@@ -399,10 +436,21 @@ export class ReportStorage {
   // Update download count
   static async updateDownloadCount(reportId: string): Promise<void> {
     try {
+      // First get current count
+      const { data: currentData, error: fetchError } = await supabaseAdmin
+        .from('reports')
+        .select('download_count')
+        .eq('id', reportId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const newCount = (currentData?.download_count || 0) + 1;
+
       const { error } = await supabaseAdmin
         .from('reports')
         .update({ 
-          download_count: supabaseAdmin.sql`download_count + 1`,
+          download_count: newCount,
           last_downloaded_at: new Date().toISOString()
         })
         .eq('id', reportId);

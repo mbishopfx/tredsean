@@ -57,11 +57,11 @@ const TEAM_USERS = {
     displayName: 'Juan',
     role: 'team_member',
     smsGateway: {
-      cloudUsername: 'PLACEHOLDER_USERNAME',
-      cloudPassword: 'PLACEHOLDER_PASSWORD',
-      deviceName: 'Pending Setup',
-      status: 'pending',
-      notes: 'Awaiting SMS Gateway credentials'
+      cloudUsername: 'GBNSPW',
+      cloudPassword: '3nneo5hkbyhpti',
+      deviceName: 'Samsung (Juan)',
+      status: 'active',
+      notes: 'Juan\'s primary SMS Gateway device'
     }
   },
   'Matttrd': {
@@ -81,11 +81,15 @@ const TEAM_USERS = {
     displayName: 'Sean',
     role: 'admin',
     smsGateway: {
-      cloudUsername: 'PLACEHOLDER_USERNAME',
-      cloudPassword: 'PLACEHOLDER_PASSWORD', 
-      deviceName: 'Pending Setup',
-      status: 'pending',
-      notes: 'Getting SMS Gateway tonight - will update credentials'
+      cloudUsername: 'YH1NKV',
+      cloudPassword: 'obiwpwuzrx5lip',
+      deviceUsername: 'sms',
+      devicePassword: 'ycs-SLwL',
+      deviceName: 'Sean\'s Device',
+      phoneNumber: '13473803274',
+      status: 'active',
+      endpoint: '/api/sms-gateway/send-sean',
+      notes: 'Using dedicated endpoint with new device credentials'
     }
   }
 };

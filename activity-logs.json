@@ -1838,5 +1838,308 @@
       "variablesUsed": 1,
       "method": "one_by_one"
     }
+  },
+  {
+    "timestamp": "2025-06-12T19:06:29.317Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T19:28:04.943Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T19:28:42.249Z",
+    "user": "Seantrd",
+    "action": "logout"
+  },
+  {
+    "timestamp": "2025-06-12T19:28:57.601Z",
+    "user": "Juantrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "team_member",
+      "username": "Juantrd",
+      "displayName": "Juan"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T19:29:19.854Z",
+    "user": "Juantrd",
+    "action": "Single SMS Sent",
+    "details": {
+      "phone": "+14176297373",
+      "messageLength": 7,
+      "timestamp": "2025-06-12T19:29:19.835Z"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T19:29:44.504Z",
+    "user": "Juantrd",
+    "action": "logout"
+  },
+  {
+    "timestamp": "2025-06-12T19:29:53.826Z",
+    "user": "Seantrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "admin",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T19:30:16.629Z",
+    "user": "Seantrd",
+    "action": "Single SMS Sent",
+    "details": {
+      "phone": "+14176297373",
+      "messageLength": 20,
+      "timestamp": "2025-06-12T19:30:16.608Z"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T19:31:34.985Z",
+    "user": "Seantrd",
+    "action": "logout"
+  },
+  {
+    "timestamp": "2025-06-12T19:31:42.114Z",
+    "user": "Jontrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "team_member",
+      "username": "Jontrd",
+      "displayName": "Jon"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T19:31:59.071Z",
+    "user": "Jontrd",
+    "action": "Single SMS Sent",
+    "details": {
+      "phone": "+14176297373",
+      "messageLength": 4,
+      "timestamp": "2025-06-12T19:31:59.048Z"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T19:37:48.876Z",
+    "user": "Jontrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Jontrd",
+      "displayName": "Jon"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T19:37:53.171Z",
+    "user": "Jontrd",
+    "action": "logout"
+  },
+  {
+    "timestamp": "2025-06-12T19:37:59.510Z",
+    "user": "Seantrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "admin",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T19:38:22.748Z",
+    "user": "Seantrd",
+    "action": "Single SMS Sent",
+    "details": {
+      "phone": "+14176297373",
+      "messageLength": 13,
+      "timestamp": "2025-06-12T19:38:22.731Z"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T19:41:59.600Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T19:42:17.416Z",
+    "user": "Seantrd",
+    "action": "Single SMS Sent",
+    "details": {
+      "phone": "+14176297373",
+      "messageLength": 4,
+      "timestamp": "2025-06-12T19:42:17.373Z"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T19:43:50.856Z",
+    "user": "Seantrd",
+    "action": "sequential_sms_campaign",
+    "details": {
+      "campaignId": "campaign_1749757416910_238b16xr8",
+      "total": 2,
+      "successful": 2,
+      "failed": 0,
+      "messageLength": 4,
+      "variablesUsed": 0,
+      "method": "one_by_one"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T19:52:57.520Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T19:53:58.450Z",
+    "user": "Seantrd",
+    "action": "sequential_sms_campaign",
+    "details": {
+      "campaignId": "campaign_1749758020786_o62ga118v",
+      "total": 2,
+      "successful": 2,
+      "failed": 0,
+      "messageLength": 37,
+      "variablesUsed": 1,
+      "method": "one_by_one"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T19:57:04.235Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T19:59:35.384Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T20:01:46.295Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T20:13:43.170Z",
+    "user": "Seantrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Seantrd",
+      "displayName": "Sean"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T20:13:50.422Z",
+    "user": "Seantrd",
+    "action": "logout"
+  },
+  {
+    "timestamp": "2025-06-12T20:14:00.778Z",
+    "user": "Josetrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "team_member",
+      "username": "Josetrd",
+      "displayName": "Jose"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T20:39:05.047Z",
+    "user": "Josetrd",
+    "action": "logout"
+  },
+  {
+    "timestamp": "2025-06-12T20:39:24.912Z",
+    "user": "Jontrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "team_member",
+      "username": "Jontrd",
+      "displayName": "Jon"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T20:50:19.782Z",
+    "user": "Jontrd",
+    "action": "logout"
+  },
+  {
+    "timestamp": "2025-06-12T20:51:14.852Z",
+    "user": "Jontrd",
+    "action": "user_authenticated",
+    "details": {
+      "role": "team_member",
+      "username": "Jontrd",
+      "displayName": "Jon"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T21:04:43.972Z",
+    "user": "Jontrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Jontrd",
+      "displayName": "Jon"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T21:10:46.705Z",
+    "user": "Jontrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Jontrd",
+      "displayName": "Jon"
+    }
+  },
+  {
+    "timestamp": "2025-06-12T21:14:23.891Z",
+    "user": "Jontrd",
+    "action": "page_view",
+    "details": {
+      "page": "dashboard",
+      "username": "Jontrd",
+      "displayName": "Jon"
+    }
   }
 ]

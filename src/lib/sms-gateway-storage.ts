@@ -131,28 +131,39 @@ async function saveConversations() {
 }
 
 export async function addSMSGatewayMessage(message: Omit<SMSGatewayMessage, 'id'>) {
-  await loadConversations();
-  
-  const newMessage: SMSGatewayMessage = {
-    ...message,
-    id: `sms_gateway_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
-  };
-  
-  // Add message to array
-  smsGatewayConversations.push(newMessage);
-  
-  // Keep only last 1000 messages
-  if (smsGatewayConversations.length > 1000) {
-    smsGatewayConversations = smsGatewayConversations.slice(-1000);
+  try {
+    await loadConversations();
+    
+    const newMessage: SMSGatewayMessage = {
+      ...message,
+      id: `sms_gateway_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+    };
+    
+    // Add message to array
+    smsGatewayConversations.push(newMessage);
+    
+    // Keep only last 1000 messages
+    if (smsGatewayConversations.length > 1000) {
+      smsGatewayConversations = smsGatewayConversations.slice(-1000);
+    }
+    
+    // Only try to save if we're on the server side
+    if (typeof window === 'undefined') {
+      await saveConversations();
+    }
+    
+    console.log('💾 Saved SMS Gateway conversation:', {
+      phoneNumber: newMessage.phoneNumber,
+      direction: newMessage.direction,
+      messagePreview: newMessage.message.substring(0, 50) + '...'
+    });
+
+    return newMessage;
+  } catch (error) {
+    console.warn('⚠️ Failed to save SMS Gateway conversation:', error);
+    // Don't throw error - allow the operation to continue even if storage fails
+    return null;
   }
-  
-  await saveConversations();
-  
-  console.log('💾 Saved SMS Gateway conversation:', {
-    phoneNumber: newMessage.phoneNumber,
-    direction: newMessage.direction,
-    messagePreview: newMessage.message.substring(0, 50) + '...'
-  });
 }
 
 export async function getSMSGatewayConversations() {

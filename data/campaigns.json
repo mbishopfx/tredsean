@@ -60,5 +60,129 @@
       "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
       "ip": "::1"
     }
+  },
+  {
+    "campaignId": "campaign_1749757416910_238b16xr8",
+    "type": "mass_sms",
+    "status": "completed",
+    "totalRecipients": 2,
+    "successful": 2,
+    "failed": 0,
+    "pending": 0,
+    "messageTemplate": "test",
+    "contactData": [
+      {
+        "phone": "+14176297373",
+        "name": "Matt Bishop",
+        "company": "TechFlow Solutions",
+        "email": "matt@techflow.com",
+        "title": "CEO"
+      },
+      {
+        "phone": "+16467705587",
+        "name": "Sean O'Brien",
+        "company": "Digital Marketing Pro",
+        "email": "sean@trurankdigital.com",
+        "title": "Marketing Director"
+      }
+    ],
+    "details": [
+      {
+        "phone": "+14176297373",
+        "status": "sent",
+        "timestamp": "2025-06-12T19:43:38.068Z",
+        "messagePreview": "test...",
+        "contact": {
+          "phone": "+14176297373",
+          "name": "Matt Bishop",
+          "company": "TechFlow Solutions",
+          "email": "matt@techflow.com",
+          "title": "CEO"
+        }
+      },
+      {
+        "phone": "+16467705587",
+        "status": "sent",
+        "timestamp": "2025-06-12T19:43:43.704Z",
+        "messagePreview": "test...",
+        "contact": {
+          "phone": "+16467705587",
+          "name": "Sean O'Brien",
+          "company": "Digital Marketing Pro",
+          "email": "sean@trurankdigital.com",
+          "title": "Marketing Director"
+        }
+      }
+    ],
+    "startTime": "2025-06-12T19:43:37.297Z",
+    "endTime": "2025-06-12T19:43:43.704Z",
+    "estimatedCost": "0.01",
+    "actualCost": "0.01",
+    "metadata": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+      "ip": "::1"
+    }
+  },
+  {
+    "campaignId": "campaign_1749758020786_o62ga118v",
+    "type": "mass_sms",
+    "status": "completed",
+    "totalRecipients": 2,
+    "successful": 2,
+    "failed": 0,
+    "pending": 0,
+    "messageTemplate": "{first_name} i am testing variables. ",
+    "contactData": [
+      {
+        "phone": "+14176297373",
+        "name": "Matt Bishop",
+        "company": "TechFlow Solutions",
+        "email": "matt@techflow.com",
+        "title": "CEO"
+      },
+      {
+        "phone": "+16467705587",
+        "name": "Sean O'Brien",
+        "company": "Digital Marketing Pro",
+        "email": "sean@trurankdigital.com",
+        "title": "Marketing Director"
+      }
+    ],
+    "details": [
+      {
+        "phone": "+14176297373",
+        "status": "sent",
+        "timestamp": "2025-06-12T19:53:41.690Z",
+        "messagePreview": "{first_name} i am testing variables. ...",
+        "contact": {
+          "phone": "+14176297373",
+          "name": "Matt Bishop",
+          "company": "TechFlow Solutions",
+          "email": "matt@techflow.com",
+          "title": "CEO"
+        }
+      },
+      {
+        "phone": "+16467705587",
+        "status": "sent",
+        "timestamp": "2025-06-12T19:53:47.358Z",
+        "messagePreview": "{first_name} i am testing variables. ...",
+        "contact": {
+          "phone": "+16467705587",
+          "name": "Sean O'Brien",
+          "company": "Digital Marketing Pro",
+          "email": "sean@trurankdigital.com",
+          "title": "Marketing Director"
+        }
+      }
+    ],
+    "startTime": "2025-06-12T19:53:40.925Z",
+    "endTime": "2025-06-12T19:53:47.358Z",
+    "estimatedCost": "0.01",
+    "actualCost": "0.01",
+    "metadata": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+      "ip": "::1"
+    }
   }
 ]

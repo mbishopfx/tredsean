@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
-// import { AuditStorage } from '@/lib/supabase'; // Temporarily disabled for deployment
+import { AuditStorage } from '@/lib/supabase';
 
 interface WebsiteData {
   url: string;
@@ -74,8 +74,7 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     };
 
-    // Save audit to permanent storage - temporarily disabled for deployment
-    /*
+    // Save audit to permanent storage
     try {
       // Get username from request headers (if available)
       const username = request.headers.get('x-username') || 'anonymous';
@@ -86,7 +85,6 @@ export async function POST(request: NextRequest) {
       console.error('Failed to save audit to storage:', storageError);
       // Continue with response even if storage fails
     }
-    */
 
     return NextResponse.json(response);
 

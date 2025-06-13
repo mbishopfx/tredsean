@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, ChangeEvent } from 'react';
+import { useState, useRef, ChangeEvent, useEffect } from 'react';
 // import { motion, AnimatePresence } from 'framer-motion'; // Removed to avoid dependency issues
 
 interface WebsiteData {
@@ -99,6 +99,32 @@ export default function GBPTool() {
   const [error, setError] = useState<string | null>(null);
   const [auditHistory, setAuditHistory] = useState<AuditResult[]>([]);
   const [activeSection, setActiveSection] = useState<'audit' | 'history' | 'reports' | 'pitch'>('audit');
+  const [savedReports, setSavedReports] = useState<any[]>([]);
+  const [loadingReports, setLoadingReports] = useState(false);
+
+  // Load saved reports when Reports section is accessed
+  useEffect(() => {
+    if (activeSection === 'reports') {
+      loadSavedReports();
+    }
+  }, [activeSection]);
+
+  const loadSavedReports = async () => {
+    setLoadingReports(true);
+    try {
+      const username = localStorage.getItem('username') || 'anonymous';
+      const response = await fetch(`/api/ai/save-output?userId=${username}&toolName=gbp-audit&limit=50`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSavedReports(data.outputs || []);
+      }
+    } catch (error) {
+      console.error('Failed to load saved reports:', error);
+    } finally {
+      setLoadingReports(false);
+    }
+  };
 
   const handleAuditSubmit = async () => {
     if (!url.trim() && !businessName.trim()) {
@@ -109,7 +135,7 @@ export default function GBPTool() {
     setIsLoading(true);
     setError(null);
     setDetailedResult(null); // Reset detailed results
-    setSalesPitch(null); // Reset sales pitch
+    setSalesPitch(null);
 
     try {
       // Get username from localStorage or use default
@@ -138,6 +164,41 @@ export default function GBPTool() {
       
       // Generate sales pitch based on audit results
       generateSalesPitch(result);
+
+      // Save audit output to AI outputs table for permanent storage
+      try {
+        const auditSummary = `🏢 **GBP AUDIT COMPLETED**
+Business: ${result.businessName}
+Overall Score: ${result.overallScore}/100
+Listing Completeness: ${result.listingCompletenessScore}/100
+Content Alignment: ${result.contentAlignmentScore}/100
+Local SEO Readiness: ${result.localSeoReadinessScore}/100
+
+Analysis: ${result.analysisSummary}
+
+Critical Recommendations:
+${result.recommendations.critical.map((rec: string, i: number) => `${i + 1}. ${rec}`).join('\n')}`;
+
+        await fetch('/api/ai/save-output', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            toolName: 'gbp-audit',
+            inputData: url || businessName,
+            outputData: auditSummary,
+            userId: username,
+            metadata: {
+              businessName: result.businessName,
+              overallScore: result.overallScore,
+              auditId: result.auditId,
+              timestamp: new Date().toISOString()
+            }
+          })
+        });
+      } catch (storageError) {
+        console.error('Failed to save audit output:', storageError);
+        // Continue even if storage fails
+      }
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
@@ -181,6 +242,52 @@ export default function GBPTool() {
       
       // Update sales pitch with detailed audit insights
       generateDetailedSalesPitch(result);
+
+      // Save detailed audit output to AI outputs table
+      try {
+        const detailedSummary = `🚀 **DETAILED AI AUDIT COMPLETED**
+Business: ${result.businessName}
+Overall Score: ${result.overallScore}/100
+AI SEO Score: ${result.aiSeoScore}/100
+Google AI Readiness: ${result.googleAiReadiness}/100
+
+Technical SEO: ${result.detailedAnalysis.technicalSeo.score}/100
+Content Quality: ${result.detailedAnalysis.contentQuality.score}/100
+Local SEO Factors: ${result.detailedAnalysis.localSeoFactors.score}/100
+
+Google AI Optimization:
+- Schema Markup: ${result.detailedAnalysis.googleAiOptimization.schemaMarkup}/100
+- Featured Snippets: ${result.detailedAnalysis.googleAiOptimization.featuredSnippets}/100
+- Voice Search: ${result.detailedAnalysis.googleAiOptimization.voiceSearchReadiness}/100
+- Entity Optimization: ${result.detailedAnalysis.googleAiOptimization.entityOptimization}/100
+
+Market Position: ${result.detailedAnalysis.competitorAnalysis.marketPosition}
+
+Immediate Action Plan:
+${result.actionPlan.immediate.map((action: string, i: number) => `${i + 1}. ${action}`).join('\n')}`;
+
+        await fetch('/api/ai/save-output', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            toolName: 'gbp-detailed-audit',
+            inputData: url || businessName,
+            outputData: detailedSummary,
+            userId: username,
+            metadata: {
+              businessName: result.businessName,
+              overallScore: result.overallScore,
+              aiSeoScore: result.aiSeoScore,
+              googleAiReadiness: result.googleAiReadiness,
+              auditId: result.auditId,
+              timestamp: new Date().toISOString()
+            }
+          })
+        });
+      } catch (storageError) {
+        console.error('Failed to save detailed audit output:', storageError);
+        // Continue even if storage fails
+      }
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
@@ -871,14 +978,92 @@ export default function GBPTool() {
         {/* Reports Section */}
         {activeSection === 'reports' && (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-white">Report Management</h3>
-            <div className="bg-tech-card rounded-lg p-6 shadow-tech">
-              <div className="text-center text-gray-400 py-12">
-                <div className="text-4xl mb-4">📄</div>
-                <p>Permanent report storage and management coming soon.</p>
-                <p className="text-sm mt-2">All reports will be saved forever with Supabase integration.</p>
-              </div>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">Saved Reports & Audits</h3>
+              <button
+                onClick={loadSavedReports}
+                className="px-4 py-2 bg-accent hover:bg-accent-light text-white rounded-md text-sm transition-colors"
+              >
+                🔄 Refresh
+              </button>
             </div>
+            
+            {loadingReports ? (
+              <div className="bg-tech-card rounded-lg p-6 shadow-tech">
+                <div className="text-center text-gray-400 py-12">
+                  <div className="text-4xl mb-4">⏳</div>
+                  <p>Loading saved reports...</p>
+                </div>
+              </div>
+            ) : savedReports.length > 0 ? (
+              <div className="grid gap-4">
+                {savedReports.map((report, index) => (
+                  <div
+                    key={report.id || index}
+                    className="bg-tech-card rounded-lg p-4 shadow-tech"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-white mb-2">
+                          {report.metadata?.businessName || 'Business Audit'}
+                        </h4>
+                        <div className="text-sm text-gray-400 space-y-1">
+                          <div>Tool: {report.tool_name}</div>
+                          <div>Created: {new Date(report.created_at).toLocaleDateString()}</div>
+                          {report.metadata?.overallScore && (
+                            <div>Score: <span className={report.metadata.overallScore >= 80 ? "text-green-500" : report.metadata.overallScore >= 60 ? "text-yellow-500" : "text-red-500"}>
+                              {report.metadata.overallScore}/100
+                            </span></div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => {
+                            // Show the full report in a modal or expand
+                            alert('Full report view coming soon!');
+                          }}
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors"
+                        >
+                          📄 View Report
+                        </button>
+                        <button
+                          onClick={() => {
+                            // Copy report to clipboard
+                            navigator.clipboard.writeText(report.output_data);
+                            alert('Report copied to clipboard!');
+                          }}
+                          className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm transition-colors"
+                        >
+                          📋 Copy
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Preview of the report */}
+                    <div className="mt-3 p-3 bg-tech-secondary rounded text-sm text-gray-300">
+                      <div className="line-clamp-3">
+                        {report.output_data.substring(0, 200)}...
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-tech-card rounded-lg p-6 shadow-tech">
+                <div className="text-center text-gray-400 py-12">
+                  <div className="text-4xl mb-4">📄</div>
+                  <p>No saved reports yet.</p>
+                  <p className="text-sm mt-2">Complete audits to see them saved here permanently.</p>
+                  <button
+                    onClick={() => setActiveSection('audit')}
+                    className="mt-4 px-6 py-3 bg-accent hover:bg-accent-light text-white rounded-md transition-colors"
+                  >
+                    Start Your First Audit
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

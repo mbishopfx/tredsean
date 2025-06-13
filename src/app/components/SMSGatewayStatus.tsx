@@ -14,6 +14,12 @@ export function SMSGatewayStatus() {
   const [gatewayInfo, setGatewayInfo] = useState<SMSGatewayInfo | null>(null);
   const [username, setUsername] = useState<string>('');
 
+  const getPersonalizedDeviceName = (username: string) => {
+    if (!username) return 'Personal Provider';
+    // Capitalize first letter and add "'s Device"
+    return `${username.charAt(0).toUpperCase() + username.slice(1)}'s Device`;
+  };
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedGateway = localStorage.getItem('userSMSGateway');
@@ -60,7 +66,7 @@ export function SMSGatewayStatus() {
           <span className={`text-sm font-medium ${
             isActive && !isPending ? 'text-green-300' : 'text-orange-300'
           }`}>
-            SMS Gateway: {gatewayInfo.deviceName}
+            SMS Gateway: {getPersonalizedDeviceName(username)}
           </span>
         </div>
         

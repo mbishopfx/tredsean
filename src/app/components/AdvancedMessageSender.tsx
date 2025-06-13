@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SMSGatewayHealthChecker } from './SMSGatewayHealthChecker';
 import { SMSGatewayStatus } from './SMSGatewayStatus';
 import { saveCampaignResults, saveActivityLog, saveCleanedCSV } from '../../lib/supabase';
@@ -320,6 +320,13 @@ const QUICK_TEMPLATES = {
 
 const TEMPLATE_CATEGORIES = Object.keys(QUICK_TEMPLATES);
 
+// Add new interface for console logs near the top with other interfaces
+interface ConsoleLog {
+  timestamp: Date;
+  message: string;
+  type: 'info' | 'success' | 'error' | 'warning';
+}
+
 export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessageSenderProps) {
   const [messageText, setMessageText] = useState('');
   const [phoneNumbers, setPhoneNumbers] = useState<string[]>([]);
@@ -355,7 +362,11 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
   const [isSendingSingle, setIsSendingSingle] = useState(false);
   
   // SMS Provider selection - default to Jon's device
-  const [smsProvider, setSmsProvider] = useState<'jon-device' | 'personal'>('jon-device');
+  const [smsProvider, setSmsProvider] = useState<'jon-device' | 'jose-device' | 'personal'>('jon-device');
+
+  // Add new state for console logs
+  const [consoleLogs, setConsoleLogs] = useState<ConsoleLog[]>([]);
+  const consoleEndRef = useRef<HTMLDivElement>(null);
 
   const filteredVariables = AVAILABLE_VARIABLES.filter(variable => {
     const matchesCategory = selectedCategory === 'All' || variable.category === selectedCategory;
@@ -389,88 +400,222 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+    if (!e.target.files?.[0]) return;
+    
+    const file = e.target.files[0];
+    setFileName(file.name);
+    
     try {
       const text = await file.text();
-      const lines = text.split('\n');
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      // Better CSV parsing that handles quoted fields and commas within quotes
+      const parseCSVLine = (line: string): string[] => {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          const nextChar = line[i + 1];
+          
+          if (char === '"') {
+            if (inQuotes && nextChar === '"') {
+              // Escaped quote
+              current += '"';
+              i++; // Skip next quote
+            } else {
+              // Toggle quote state
+              inQuotes = !inQuotes;
+            }
+          } else if (char === ',' && !inQuotes) {
+            // End of field
+            result.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        
+        // Add the last field
+        result.push(current.trim());
+        return result;
+      };
+      
+      // Function to validate and clean phone numbers
+      const isValidPhoneNumber = (value: string): string | null => {
+        if (!value || typeof value !== 'string') return null;
+        
+        // Skip obvious non-phone values
+        const lowerValue = value.toLowerCase();
+        if (lowerValue.includes('suite') || 
+            lowerValue.includes('c-suite') || 
+            lowerValue.includes('operations') || 
+            lowerValue.includes('sales') || 
+            lowerValue.includes('marketing') || 
+            lowerValue.includes('finance') ||
+            lowerValue.includes('department') ||
+            lowerValue.length < 10) {
+          return null;
+        }
+        
+        // Extract only digits and + sign
+        const cleanPhone = value.replace(/[^\d+]/g, '');
+        
+        // Check if it's a valid phone number format
+        if (cleanPhone.length >= 10) {
+          // Remove leading 1 if it's 11 digits and starts with 1
+          if (cleanPhone.length === 11 && cleanPhone.startsWith('1')) {
+            return '+1' + cleanPhone.substring(1);
+          }
+          // Add +1 if it's 10 digits
+          else if (cleanPhone.length === 10) {
+            return '+1' + cleanPhone;
+          }
+          // Keep as is if it already has country code
+          else if (cleanPhone.length > 10) {
+            return cleanPhone.startsWith('+') ? cleanPhone : '+' + cleanPhone;
+          }
+        }
+        
+        return null;
+      };
+      
+      const rows = text.split('\n').filter(row => row.trim());
+      const headers = parseCSVLine(rows[0]).map(header => 
+        header.trim().toLowerCase().replace(/['"]/g, '')
+      );
+      
+      addConsoleLog(`CSV Headers found: ${headers.join(', ')}`, 'info');
+      
+      // Enhanced phone number detection for Apollo and other formats
+      const phoneColumns = headers.filter(header => 
+        header.includes('phone') || 
+        header.includes('mobile') || 
+        header.includes('cell') ||
+        header.includes('direct') ||
+        header === 'work direct phone' ||
+        header === 'mobile phone' ||
+        header === 'other phone'
+      );
+      
+      addConsoleLog(`Phone columns detected: ${phoneColumns.join(', ')}`, 'info');
       
       const contacts: ContactData[] = [];
       const phones: string[] = [];
+      const seenPhones = new Set<string>(); // Track duplicates
+      let duplicateCount = 0;
+      let tollFreeCount = 0;
       
-      for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue;
+      // Process each row after headers
+      for (let i = 1; i < rows.length; i++) {
+        if (!rows[i].trim()) continue; // Skip empty rows
         
-        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
-        const contact: ContactData = { phone: '' };
+        const values = parseCSVLine(rows[i]);
+        const contact: ContactData = { phone: '' }; // Initialize with required phone field
         
+        // Map CSV columns to contact data
         headers.forEach((header, index) => {
-          if (values[index]) {
-            const key = header.toLowerCase().replace(/\s+/g, '_');
-            contact[key] = values[index];
-            
-            // More specific phone number column detection - avoid phone_type
-            if (key === 'phone' || key === 'mobile' || key === 'cell' || key === 'phone_number' || key === 'mobile_phone' || key === 'cell_phone') {
-              contact.phone = values[index];
-            }
+          if (values[index] && values[index].trim()) {
+            const cleanValue = values[index].trim().replace(/['"]/g, '');
+            contact[header] = cleanValue;
           }
         });
         
-        if (contact.phone) {
+        // Try to find a valid phone number from phone columns first
+        let foundPhone = '';
+        for (const phoneCol of phoneColumns) {
+          if (contact[phoneCol]) {
+            const validPhone = isValidPhoneNumber(contact[phoneCol]);
+            if (validPhone) {
+              foundPhone = validPhone;
+              addConsoleLog(`Row ${i + 1}: Found phone in "${phoneCol}": ${validPhone}`, 'info');
+              break;
+            }
+          }
+        }
+        
+        // If no phone found in dedicated columns, try all fields
+        if (!foundPhone) {
+          for (const [key, value] of Object.entries(contact)) {
+            if (typeof value === 'string') {
+              const validPhone = isValidPhoneNumber(value);
+              if (validPhone) {
+                foundPhone = validPhone;
+                addConsoleLog(`Row ${i + 1}: Found phone in "${key}": ${validPhone}`, 'info');
+                break;
+              }
+            }
+          }
+        }
+        
+        if (foundPhone) {
+          // Check for toll-free numbers (800, 888, 877, 866, 855, 844, 833)
+          const phoneDigits = foundPhone.replace(/[^\d]/g, '');
+          const areaCode = phoneDigits.substring(phoneDigits.length - 10, phoneDigits.length - 7);
+          
+          if (['800', '888', '877', '866', '855', '844', '833'].includes(areaCode)) {
+            addConsoleLog(`Row ${i + 1}: Skipping toll-free number ${foundPhone}`, 'warning');
+            tollFreeCount++;
+            continue;
+          }
+          
+          // Check for duplicates
+          if (seenPhones.has(foundPhone)) {
+            addConsoleLog(`Row ${i + 1}: Duplicate phone number ${foundPhone}`, 'warning');
+            duplicateCount++;
+            continue;
+          }
+          
+          seenPhones.add(foundPhone);
+          contact.phone = foundPhone;
+          
+          // Enhanced name processing for Apollo format
+          if (!contact.first_name && contact['first name']) {
+            contact.first_name = contact['first name'];
+          }
+          if (!contact.last_name && contact['last name']) {
+            contact.last_name = contact['last name'];
+          }
+          if (!contact.company && contact['company name for emails']) {
+            contact.company = contact['company name for emails'];
+          }
+          if (!contact.name && contact.first_name) {
+            contact.name = contact.first_name + (contact.last_name ? ' ' + contact.last_name : '');
+          }
+          
           contacts.push(contact);
-          phones.push(contact.phone);
+          phones.push(foundPhone);
+          addConsoleLog(`Row ${i + 1}: Added contact: ${contact.first_name || contact.name || 'Unknown'} - ${foundPhone}`, 'success');
+        } else {
+          addConsoleLog(`Row ${i + 1}: No valid phone number found`, 'warning');
         }
       }
       
       setContactData(contacts);
       setPhoneNumbers(phones);
-      setFileName(file.name);
       setPreviewContact(contacts[0] || null);
       
-      setSendStatus({
-        success: true,
-        message: `✅ Loaded ${contacts.length} contacts with ${headers.length} fields`
-      });
-
-      // Save cleaned CSV to Supabase storage
-      try {
-        const username = typeof window !== 'undefined' ? 
-          localStorage.getItem('username') || 'unknown' : 'unknown';
-        
-        // Convert cleaned data back to CSV format
-        const csvRows = [
-          headers.join(','),
-          ...contacts.map(contact => 
-            headers.map(header => {
-              const key = header.toLowerCase().replace(/\s+/g, '_');
-              const value = (contact[key] || '').toString().replace(/"/g, '""');
-              return `"${value}"`;
-            }).join(',')
-          )
-        ];
-        const cleanedCsvData = csvRows.join('\n');
-        
-        const metadata = {
-          originalFilename: file.name,
-          originalSize: file.size,
-          cleanedContacts: contacts.length,
-          validPhones: phones.length,
-          processedAt: new Date().toISOString(),
-          headers: headers
-        };
-
-        await saveCleanedCSV(file.name, cleanedCsvData, username, metadata);
-        console.log('✅ Cleaned CSV saved to Supabase storage');
-      } catch (error) {
-        console.error('❌ Failed to save cleaned CSV:', error);
-      }
+      // Summary message
+      const totalRows = rows.length - 1; // Exclude header
+      const successMessage = `Successfully loaded ${contacts.length} contacts with valid phone numbers out of ${totalRows} total rows.`;
+      const detailMessage = duplicateCount > 0 || tollFreeCount > 0 ? 
+        ` ${duplicateCount} duplicates and ${tollFreeCount} toll-free numbers were filtered out.` : '';
       
-    } catch (error) {
+      addConsoleLog(successMessage + detailMessage, 'success');
+      
+      setSendStatus({
+        success: contacts.length > 0,
+        message: contacts.length > 0 ? 
+          `✅ ${successMessage}${detailMessage}` : 
+          '❌ No valid phone numbers found in CSV. Please check your file format.'
+      });
+      
+    } catch (error: any) {
+      addConsoleLog(`Error parsing CSV: ${error.message}`, 'error');
+      console.error('Error parsing CSV:', error);
       setSendStatus({
         success: false,
-        message: '❌ Failed to parse CSV file. Please check the format.'
+        message: `❌ Error parsing CSV: ${error.message}`
       });
     }
   };
@@ -546,82 +691,45 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
     return preview;
   };
 
-  const handleSendSingleMessage = async () => {
-    if (!singleMessage.trim() || !singlePhone.trim()) {
-      setSendStatus({
-        success: false,
-        message: 'Please enter both phone number and message'
-      });
-      return;
-    }
+  // Add function to add console logs
+  const addConsoleLog = (message: string, type: ConsoleLog['type'] = 'info') => {
+    setConsoleLogs(prev => [...prev, {
+      timestamp: new Date(),
+      message,
+      type
+    }]);
+    // Scroll to bottom of console
+    setTimeout(() => {
+      consoleEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
 
+  const handleSendSingleMessage = async () => {
+    if (!singleMessage.trim() || !singlePhone.trim() || isSendingSingle) return;
+    
     setIsSendingSingle(true);
+    addConsoleLog(`Sending message to ${formatPhoneNumber(singlePhone)}...`, 'info');
     
     try {
-      // Format the phone number
-      const formattedPhone = formatPhoneNumber(singlePhone);
-      
-      // Validate phone number format
-      if (formattedPhone.length < 11 || !formattedPhone.startsWith('+')) {
-        setSendStatus({
-          success: false,
-          message: 'Invalid phone number format. Please enter a valid phone number.'
-        });
-        setIsSendingSingle(false);
-        return;
-      }
-
-      console.log('📤 Sending single message via', smsProvider, 'to:', formattedPhone);
-      
       let response;
-      
       if (smsProvider === 'jon-device') {
-        // Check if user has their own SMS Gateway credentials
-        const userSMSGateway = typeof window !== 'undefined' ? 
-          localStorage.getItem('userSMSGateway') : null;
-        
-        if (userSMSGateway) {
-          try {
-            const credentials = JSON.parse(userSMSGateway);
-            // Use user's personal SMS Gateway device
-            response = await fetch('/api/sms-gateway/send-user-sms', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                phoneNumber: formattedPhone,
-                message: singleMessage,
-                userCredentials: credentials
-              }),
-            });
-          } catch (error) {
-            console.error('Error parsing user SMS Gateway credentials:', error);
-            // Fallback to Jon's device
-            response = await fetch('/api/sms-gateway/send-jon-simple', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                phoneNumber: formattedPhone,
-                message: singleMessage
-              }),
-            });
-          }
-        } else {
-          // Fallback to Jon's device if no user credentials
-          response = await fetch('/api/sms-gateway/send-jon-simple', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              phoneNumber: formattedPhone,
-              message: singleMessage
-            }),
-          });
-        }
+        response = await fetch('/api/sms-gateway/send-jon-simple', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phoneNumber: singlePhone,
+            message: singleMessage
+          }),
+        });
+      } else if (smsProvider === 'jose-device') {
+        response = await fetch('/api/sms-gateway/send-jose', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phoneNumber: singlePhone,
+            message: singleMessage
+          }),
+        });
       } else {
         // Use personal SMS Gateway credentials
         const storedCredentials = localStorage.getItem('personalSMSCredentials');
@@ -649,11 +757,11 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            phoneNumbers: [formattedPhone],
+            phoneNumbers: [singlePhone],
             message: singleMessage,
             provider: 'personal',
             credentials: transformedCredentials,
-            contactData: [{ phone: formattedPhone }],
+            contactData: [{ phone: singlePhone }],
             campaignId: `single_${Date.now()}`
           }),
         });
@@ -664,14 +772,14 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
       if (response.ok) {
         setSendStatus({
           success: true,
-          message: `✅ Message sent successfully to ${formattedPhone}`
+          message: `✅ Message sent successfully to ${singlePhone}`
         });
         setSingleMessage('');
         setSinglePhone('');
         
         // Log activity
         logActivity('Single SMS Sent', {
-          phone: formattedPhone,
+          phone: singlePhone,
           messageLength: singleMessage.length,
           timestamp: new Date().toISOString()
         });
@@ -682,7 +790,7 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
             localStorage.getItem('username') || 'unknown' : 'unknown';
           
           await saveActivityLog(username, 'single_sms_sent', {
-            phone: formattedPhone,
+            phone: singlePhone,
             messageLength: singleMessage.length,
             message: singleMessage.substring(0, 100) + '...',
             provider: smsProvider,
@@ -691,332 +799,267 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
         } catch (error) {
           console.error('Failed to save activity log:', error);
         }
+
+        addConsoleLog(`Message sent successfully to ${singlePhone}`, 'success');
       } else {
         setSendStatus({
           success: false,
           message: `❌ Failed to send message: ${data.error || 'Unknown error'}`
         });
+        addConsoleLog(`Failed to send message to ${singlePhone}: ${data.error || 'Unknown error'}`, 'error');
       }
     } catch (error: any) {
       setSendStatus({
         success: false,
         message: `❌ Error sending message: ${error.message}`
       });
+      addConsoleLog(`Failed to send message to ${singlePhone}: ${error.message}`, 'error');
     } finally {
       setIsSendingSingle(false);
     }
   };
 
-  const handleSendMessages = async () => {
-    if (!messageText || phoneNumbers.length === 0) {
-      setSendStatus({
-        success: false,
-        message: 'Please enter a message and upload contacts'
-      });
-      return;
+  const personalizeMessage = (message: string, contact: ContactData) => {
+    let personalized = message;
+    
+    // Debug logging
+    addConsoleLog(`Personalizing message for contact:`, 'info');
+    addConsoleLog(`Contact data: ${JSON.stringify(contact)}`, 'info');
+    addConsoleLog(`Original message: ${message}`, 'info');
+    
+    // Pre-process name fields if we have a full name but need first/last name
+    if (contact.name && !contact.first_name) {
+      const nameParts = contact.name.split(' ');
+      contact.first_name = nameParts[0];
+      if (nameParts.length > 1) {
+        contact.last_name = nameParts.slice(1).join(' ');
+      }
+      addConsoleLog(`Split name "${contact.name}" into first_name: "${contact.first_name}", last_name: "${contact.last_name}"`, 'info');
     }
 
-    setIsSending(true);
-    
-    // Generate campaign ID
-    const newCampaignId = `campaign_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    setCampaignId(newCampaignId);
-    
-    // Initialize tracking report
-    const report = {
-      campaignId: newCampaignId,
-      startTime: new Date().toISOString(),
-      totalRecipients: phoneNumbers.length,
-      successful: 0,
-      failed: 0,
-      pending: phoneNumbers.length,
-      details: [] as any[],
-      messagePreview: generatePreview().substring(0, 100) + '...',
-      estimatedCost: (phoneNumbers.length * 0.0075).toFixed(2)
+    // Common field mappings for CSV column variations
+    const fieldMappings: { [key: string]: string[] } = {
+      'first_name': ['first_name', 'firstname', 'fname', 'first'],
+      'last_name': ['last_name', 'lastname', 'lname', 'last'],
+      'name': ['name', 'full_name', 'fullname'],
+      'company': ['company', 'company_name', 'organization', 'business'],
+      'email': ['email', 'email_address', 'emailaddress'],
+      'phone': ['phone', 'phone_number', 'phonenumber', 'mobile', 'cell']
     };
+
+    // First try direct variable replacement
+    Object.entries(contact).forEach(([key, value]) => {
+      if (value) {
+        const regex = new RegExp(`{${key}}`, 'gi');
+        personalized = personalized.replace(regex, value.toString());
+        if (personalized !== message) {
+          addConsoleLog(`Replaced {${key}} with ${value}`, 'info');
+        }
+      }
+    });
+
+    // Then try mapped variations
+    Object.entries(fieldMappings).forEach(([standardKey, variations]) => {
+      variations.forEach(variant => {
+        if (contact[variant]) {
+          const regex = new RegExp(`{${standardKey}}`, 'gi');
+          personalized = personalized.replace(regex, contact[variant]?.toString() || '');
+          if (personalized !== message) {
+            addConsoleLog(`Mapped {${standardKey}} to ${variant} value: ${contact[variant]}`, 'info');
+          }
+        }
+      });
+    });
+
+    // Replace system variables
+    const systemVariables = {
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString(),
+      current_month: new Date().toLocaleString('default', { month: 'long' }),
+      current_year: new Date().getFullYear().toString(),
+      day_of_week: new Date().toLocaleString('default', { weekday: 'long' })
+    };
+
+    Object.entries(systemVariables).forEach(([key, value]) => {
+      const regex = new RegExp(`{${key}}`, 'gi');
+      personalized = personalized.replace(regex, value);
+      if (personalized !== message) {
+        addConsoleLog(`Replaced system variable {${key}} with ${value}`, 'info');
+      }
+    });
     
-    setCampaignReport(report);
-    setSendStatus(null);
+    // Debug logging
+    addConsoleLog(`Final personalized message: ${personalized}`, 'info');
+    
+    return personalized;
+  };
+
+  // Update handleSendMessages to handle Jose's device
+  const handleSendMessages = async () => {
+    if (!messageText.trim() || phoneNumbers.length === 0 || isSending) return;
+    
+    setIsSending(true);
+    addConsoleLog(`Starting campaign to ${phoneNumbers.length} recipients...`, 'info');
     
     try {
-      console.log('📤 Starting mass campaign via', smsProvider, 'to', phoneNumbers.length, 'contacts');
+      // Generate campaign ID
+      const newCampaignId = `campaign_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      setCampaignId(newCampaignId);
       
-      // Only check for personal credentials if not using Jon's device
-      let transformedCredentials = null;
-      if (smsProvider !== 'jon-device') {
-        const storedCredentials = localStorage.getItem('personalSMSCredentials');
-        const personalSMSCredentials = storedCredentials ? JSON.parse(storedCredentials) : null;
-        
-        if (!personalSMSCredentials) {
-          setSendStatus({
-            success: false,
-            message: '❌ Personal SMS credentials not found. Please log in again.'
-          });
-          setIsSending(false);
-          return;
-        }
+      // Initialize tracking report
+      const report = {
+        campaignId: newCampaignId,
+        startTime: new Date().toISOString(),
+        totalRecipients: phoneNumbers.length,
+        successful: 0,
+        failed: 0,
+        pending: phoneNumbers.length,
+        details: [] as any[],
+        messagePreview: messageText.substring(0, 100) + '...',
+        estimatedCost: (phoneNumbers.length * 0.0075).toFixed(2)
+      };
+      
+      setCampaignReport(report);
+      setSendStatus(null);
 
-        // Transform credentials for SMS Gateway compatibility
-        transformedCredentials = personalSMSCredentials?.provider === 'smsgateway' ? {
-          ...personalSMSCredentials,
-          username: personalSMSCredentials.cloudUsername || personalSMSCredentials.username,
-          password: personalSMSCredentials.cloudPassword || personalSMSCredentials.password
-        } : personalSMSCredentials;
-      }
+      // Add delay function
+      const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+      
+      // Calculate delay based on list size
+      const getDelay = (listSize: number) => {
+        if (listSize <= 100) return 2000; // 2 seconds for small lists
+        if (listSize <= 300) return 3000; // 3 seconds for medium lists
+        return 4000; // 4 seconds for large lists (300+)
+      };
+      
+      const delayTime = getDelay(contactData.length);
+      addConsoleLog(`Setting ${delayTime/1000} second delay between messages for list size ${contactData.length}`, 'info');
 
-      // Send campaign tracking request first
-      if (trackingEnabled) {
-        await fetch('/api/campaigns/track', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            campaignId: newCampaignId,
-            type: 'mass_sms',
-            totalRecipients: phoneNumbers.length,
-            messageTemplate: messageText,
-            contactData: contactData.slice(0, 5) // Sample data
-          })
-        });
-      }
-
-      // Send messages one by one sequentially (like single messages)
-      let totalSuccessful = 0;
-      let totalFailed = 0;
-      const details: any[] = [];
-
-      // Process each contact individually, just like single messages
-      for (let i = 0; i < phoneNumbers.length; i++) {
-        const phone = phoneNumbers[i];
-        const contact = contactData[i] || { phone };
+      // Process each contact with delay
+      for (let i = 0; i < contactData.length; i++) {
+        const contact = contactData[i];
+        const personalizedMessage = personalizeMessage(messageText, contact);
         
-        // Format phone number exactly like single messages
-        const formattedPhone = formatPhoneNumber(phone);
-        
-        // Personalize message for this specific contact (using same logic as generatePreview)
-        let personalizedMessage = messageText;
-        
-        // Replace variables with actual contact data (dynamic field mapping)
-        Object.keys(contact).forEach(key => {
-          const regex = new RegExp(`{${key}}`, 'g');
-          personalizedMessage = personalizedMessage.replace(regex, contact[key] || "");
-        });
-        
-        // Also try common field variations for better compatibility
-        const fieldMappings = {
-          'name': ['name', 'first_name', 'firstname', 'full_name', 'fullname'],
-          'company': ['company', 'company_name', 'organization', 'business', 'business_name'],
-          'email': ['email', 'email_address', 'e_mail'],
-          'title': ['title', 'job_title', 'position', 'role'],
-          'location': ['location', 'city', 'address', 'state'],
-          'phone': ['phone', 'mobile', 'cell', 'phone_number']
-        };
-        
-        Object.entries(fieldMappings).forEach(([variable, possibleFields]) => {
-          const regex = new RegExp(`{${variable}}`, 'g');
-          for (const field of possibleFields) {
-            if (contact[field]) {
-              personalizedMessage = personalizedMessage.replace(regex, contact[field]);
-              break;
-            }
-          }
-        });
-        
-        // Replace system variables
-        personalizedMessage = personalizedMessage.replace(/{date}/g, new Date().toLocaleDateString());
-        personalizedMessage = personalizedMessage.replace(/{time}/g, new Date().toLocaleTimeString());
-        personalizedMessage = personalizedMessage.replace(/{current_month}/g, new Date().toLocaleString('default', { month: 'long' }));
-        personalizedMessage = personalizedMessage.replace(/{current_year}/g, new Date().getFullYear().toString());
-        personalizedMessage = personalizedMessage.replace(/{day_of_week}/g, new Date().toLocaleString('default', { weekday: 'long' }));
-        
-        // Set phone number for {phone} variable
-        personalizedMessage = personalizedMessage.replace(/{phone}/g, formattedPhone);
-        
-        console.log(`📤 Sending message ${i + 1}/${phoneNumbers.length} to ${formattedPhone}...`);
-        console.log(`Contact data:`, contact);
-        console.log(`Original message:`, messageText);
-        console.log(`Personalized message:`, personalizedMessage);
+        // Add progress percentage
+        const progress = Math.round((i / contactData.length) * 100);
+        addConsoleLog(`Processing ${contact.phone} (${i + 1}/${contactData.length} - ${progress}%)...`, 'info');
         
         try {
           let response;
-          
           if (smsProvider === 'jon-device') {
-            // Check if user has their own SMS Gateway credentials
-            const userSMSGateway = typeof window !== 'undefined' ? 
-              localStorage.getItem('userSMSGateway') : null;
-            
-            if (userSMSGateway) {
-              try {
-                const credentials = JSON.parse(userSMSGateway);
-                // Use user's personal SMS Gateway device
-                response = await fetch('/api/sms-gateway/send-user-sms', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    phoneNumber: formattedPhone,
-                    message: personalizedMessage,
-                    userCredentials: credentials
-                  }),
-                });
-              } catch (error) {
-                console.error('Error parsing user SMS Gateway credentials:', error);
-                // Fallback to Jon's device
-                response = await fetch('/api/sms-gateway/send-jon-simple', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    phoneNumber: formattedPhone,
-                    message: personalizedMessage
-                  }),
-                });
-              }
-            } else {
-              // Fallback to Jon's device if no user credentials
-              response = await fetch('/api/sms-gateway/send-jon-simple', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  phoneNumber: formattedPhone,
-                  message: personalizedMessage
-                }),
-              });
-            }
+            response = await fetch('/api/sms-gateway/send-jon-simple', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                phoneNumber: contact.phone,
+                message: personalizedMessage
+              }),
+            });
+          } else if (smsProvider === 'jose-device') {
+            response = await fetch('/api/sms-gateway/send-jose', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                phoneNumber: contact.phone,
+                message: personalizedMessage
+              }),
+            });
           } else {
             // Use personal SMS Gateway credentials
+            const storedCredentials = localStorage.getItem('personalSMSCredentials');
+            const personalSMSCredentials = storedCredentials ? JSON.parse(storedCredentials) : null;
+            
+            if (!personalSMSCredentials) {
+              throw new Error('Personal SMS credentials not found. Please log in again.');
+            }
+
+            // Transform credentials for SMS Gateway compatibility
+            const transformedCredentials = personalSMSCredentials?.provider === 'smsgateway' ? {
+              ...personalSMSCredentials,
+              username: personalSMSCredentials.cloudUsername || personalSMSCredentials.username,
+              password: personalSMSCredentials.cloudPassword || personalSMSCredentials.password
+            } : personalSMSCredentials;
+
             response = await fetch('/api/sms/send', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                phoneNumbers: [formattedPhone],
+                phoneNumbers: [contact.phone],
                 message: personalizedMessage,
                 provider: 'personal',
                 credentials: transformedCredentials,
-                contactData: [{ phone: formattedPhone }],
-                campaignId: `single_${Date.now()}_${i}` // Make each look like a single message
+                contactData: [contact],
+                campaignId: `${newCampaignId}_${i}`
               }),
             });
+          }
+
+          if (!response) {
+            throw new Error('No response received from SMS gateway');
           }
 
           const data = await response.json();
           
           if (response.ok) {
-            totalSuccessful++;
-            details.push({
-              phone: formattedPhone,
+            report.successful++;
+            report.details.push({
+              phone: contact.phone,
               status: 'sent',
-              timestamp: new Date().toISOString(),
-              messagePreview: personalizedMessage.substring(0, 50) + '...',
-              contact: contact
+              timestamp: new Date().toISOString()
             });
-            console.log(`✅ Message ${i + 1} sent successfully to ${formattedPhone}`);
+            addConsoleLog(`✓ Sent to ${contact.phone}`, 'success');
           } else {
-            totalFailed++;
-            details.push({
-              phone: formattedPhone,
+            report.failed++;
+            report.details.push({
+              phone: contact.phone,
               status: 'failed',
-              error: data.error || 'Unknown error',
-              timestamp: new Date().toISOString(),
-              contact: contact
+              error: data.error,
+              timestamp: new Date().toISOString()
             });
-            console.log(`❌ Message ${i + 1} failed to ${formattedPhone}: ${data.error || 'Unknown error'}`);
+            addConsoleLog(`✕ Failed to send to ${contact.phone}: ${data.error}`, 'error');
           }
         } catch (error: any) {
-          totalFailed++;
-          details.push({
-            phone: formattedPhone,
+          report.failed++;
+          report.details.push({
+            phone: contact.phone,
             status: 'failed',
             error: error.message,
-            timestamp: new Date().toISOString(),
-            contact: contact
+            timestamp: new Date().toISOString()
           });
-          console.log(`❌ Message ${i + 1} error to ${formattedPhone}: ${error.message}`);
+          addConsoleLog(`✕ Error sending to ${contact.phone}: ${error.message}`, 'error');
         }
-
-        // Update report in real-time after each message
-        const updatedReport = {
-          ...report,
-          successful: totalSuccessful,
-          failed: totalFailed,
-          pending: phoneNumbers.length - totalSuccessful - totalFailed,
-          details,
-          endTime: new Date().toISOString(),
-          actualCost: (totalSuccessful * 0.0075).toFixed(2)
-        };
-        setCampaignReport(updatedReport);
-
-        // Longer delay between messages to avoid rate limiting
-        if (i < phoneNumbers.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 5000)); // 5 second delay between messages
-        }
-      }
-
-      // Final campaign tracking update
-      if (trackingEnabled) {
-        await fetch('/api/campaigns/track', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            campaignId: newCampaignId,
-            successful: totalSuccessful,
-            failed: totalFailed,
-            details: details,
-            endTime: new Date().toISOString()
-          })
-        });
-      }
-
-      // Save campaign results to Supabase storage
-      try {
-        const username = typeof window !== 'undefined' ? 
-          localStorage.getItem('username') || 'unknown' : 'unknown';
         
-        const finalReport = {
-          ...report,
-          successful: totalSuccessful,
-          failed: totalFailed,
-          pending: 0,
-          details,
-          endTime: new Date().toISOString(),
-          actualCost: (totalSuccessful * 0.0075).toFixed(2)
-        };
+        report.pending--;
+        setCampaignReport({ ...report });
 
-        await saveCampaignResults(newCampaignId, finalReport, username);
-        console.log('✅ Campaign results saved to Supabase storage');
-      } catch (error) {
-        console.error('❌ Failed to save campaign results to storage:', error);
+        // Add delay between messages, but not after the last message
+        if (i < contactData.length - 1) {
+          addConsoleLog(`Waiting ${delayTime/1000} seconds before next message...`, 'info');
+          await delay(delayTime);
+        }
       }
 
-      setSendStatus({
-        success: totalFailed === 0,
-        message: totalFailed === 0 
-          ? `✅ All messages sent! ${totalSuccessful}/${phoneNumbers.length} messages delivered successfully`
-          : `⚠️ Campaign completed: ${totalSuccessful} sent successfully, ${totalFailed} failed`
-      });
-      
-      setShowReport(true);
-      
-      logActivity('sequential_sms_campaign', {
-        campaignId: newCampaignId,
-        total: phoneNumbers.length,
-        successful: totalSuccessful,
-        failed: totalFailed,
-        messageLength: messageText.length,
-        variablesUsed: messageText.match(/{[^}]+}/g)?.length || 0,
-        method: 'one_by_one'
-      });
+      // Final status update
+      if (report.failed === 0) {
+        setSendStatus({
+          success: true,
+          message: `✅ Campaign completed successfully! Sent to ${report.successful} recipients.`
+        });
+        addConsoleLog(`Campaign completed successfully! Sent to ${report.successful} recipients`, 'success');
+      } else {
+        setSendStatus({
+          success: false,
+          message: `⚠️ Campaign completed with ${report.failed} failures. ${report.successful} messages sent successfully.`
+        });
+        addConsoleLog(`Campaign completed with ${report.failed} failures. ${report.successful} messages sent successfully.`, 'warning');
+      }
       
     } catch (error: any) {
       setSendStatus({
         success: false,
         message: `❌ Campaign failed: ${error.message}`
       });
+      addConsoleLog(`Campaign failed: ${error.message}`, 'error');
     } finally {
       setIsSending(false);
     }
@@ -1103,40 +1146,47 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
                   </div>
                 </div>
                 
-                {/* SMS Provider Selection */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    SMS Provider
-                  </label>
-                  <div className="flex bg-tech-secondary rounded-lg p-1">
-                    <button
-                      onClick={() => setSmsProvider('jon-device')}
-                      className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                        smsProvider === 'jon-device'
-                          ? 'bg-green-600 text-white'
-                          : 'text-gray-400 hover:text-gray-300'
-                      }`}
-                    >
-                      📱 Jon's Device (Recommended)
-                    </button>
-                    <button
-                      onClick={() => setSmsProvider('personal')}
-                      className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                        smsProvider === 'personal'
-                          ? 'bg-blue-600 text-white'
-                          : 'text-gray-400 hover:text-gray-300'
-                      }`}
-                    >
-                      🔧 Personal Credentials
-                    </button>
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1">
-                    {smsProvider === 'jon-device' ? (
-                      <span className="text-green-400">✅ Using Jon's working Samsung device - Guaranteed delivery!</span>
-                    ) : (
-                      <span className="text-yellow-400">⚠️ Using personal credentials - May have delivery issues</span>
-                    )}
-                  </div>
+                {/* SMS Provider Selection - Simplified */}
+                <div className="flex bg-tech-secondary rounded-lg p-1">
+                  <button
+                    onClick={() => setSmsProvider('jon-device')}
+                    className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      smsProvider === 'jon-device'
+                        ? 'bg-green-600 text-white'
+                        : 'text-gray-400 hover:text-gray-300'
+                    }`}
+                  >
+                    📱 Jon's Device
+                  </button>
+                  <button
+                    onClick={() => setSmsProvider('jose-device')}
+                    className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      smsProvider === 'jose-device'
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-400 hover:text-gray-300'
+                    }`}
+                  >
+                    📱 Jose's Device
+                  </button>
+                  <button
+                    onClick={() => setSmsProvider('personal')}
+                    className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      smsProvider === 'personal'
+                        ? 'bg-purple-600 text-white'
+                        : 'text-gray-400 hover:text-gray-300'
+                    }`}
+                  >
+                    🔧 Personal
+                  </button>
+                </div>
+                <div className="text-xs text-gray-400 mt-1">
+                  {smsProvider === 'jon-device' ? (
+                    <span className="text-green-400">✅ Using Jon's Samsung device - Guaranteed delivery</span>
+                  ) : smsProvider === 'jose-device' ? (
+                    <span className="text-yellow-400">⚠️ Using Jose's device - May have delivery issues</span>
+                  ) : (
+                    <span className="text-purple-400">⚠️ Using personal credentials - Check device compatibility</span>
+                  )}
                 </div>
 
                 {/* Message Input */}
@@ -1234,453 +1284,382 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
             {/* SMS Gateway Health Status */}
             <SMSGatewayHealthChecker />
             
-            {/* SMS Provider Selection */}
+            {/* Message Composer */}
+            <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+              <div className="h-1 bg-gradient"></div>
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Campaign Message</h3>
+                  <div className="flex items-center space-x-2 text-sm">
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                    <span className="text-green-400">SMS Gateway Connected</span>
+                  </div>
+                </div>
+                
+                <textarea
+                  className="w-full min-h-[200px] p-4 bg-tech-input border border-tech-border rounded-md text-tech-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none font-mono text-sm"
+                  placeholder="Create your personalized message template here...\n\nExample:\nHi {name}! I noticed {company} could benefit from digital marketing. Most {industry} businesses in {city} are missing out on 300% more leads. Quick 15-min call this {current_month}?\n\nBest,\nTRD Team"
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                />
+                
+                <div className="flex justify-between items-center mt-2 text-xs text-gray-400">
+                  <span>
+                    Variables: {(messageText.match(/{[^}]+}/g) || []).length} | 
+                    Characters: {messageText.length} / 1600
+                  </span>
+                  <span>
+                    Est. Cost: ${((messageText.length / 160) * phoneNumbers.length * 0.01).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Upload */}
+            <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+              <div className="h-1 bg-gradient-accent"></div>
+              <div className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Upload Contact List</h3>
+                
+                <div className="border-2 border-dashed border-tech-border rounded-lg p-6 text-center">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    className="hidden"
+                    id="csv-upload"
+                    onChange={handleFileUpload}
+                  />
+                  <label htmlFor="csv-upload" className="cursor-pointer">
+                    <div className="text-gray-300 mb-4">
+                      <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                      </svg>
+                    </div>
+                    <div className="text-lg text-gray-300 mb-2">Drop your CSV file here</div>
+                    <div className="text-sm text-gray-500">
+                      Supports Apollo exports, lead gen CSVs, and custom formats
+                    </div>
+                  </label>
+                </div>
+                
+                {fileName && (
+                  <div className="mt-4 flex items-center justify-between p-3 bg-green-900 bg-opacity-20 border border-green-500 rounded-md">
+                    <div className="flex items-center">
+                      <svg className="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                      </svg>
+                      <span className="text-green-400 font-medium">
+                        {fileName} ({phoneNumbers.length} contacts)
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setFileName('');
+                        setPhoneNumbers([]);
+                        setContactData([]);
+                        setPreviewContact(null);
+                      }}
+                      className="text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Send Campaign */}
             <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
               <div className="h-1 bg-gradient-to-r from-green-500 to-blue-500"></div>
               <div className="p-6">
-                <h3 className="text-lg font-semibold mb-4">SMS Provider</h3>
-                <div className="flex bg-tech-secondary rounded-lg p-1">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">Launch Campaign</h3>
+                    <p className="text-gray-400 text-sm">
+                      Ready to send to {phoneNumbers.length} contacts
+                    </p>
+                  </div>
                   <button
-                    onClick={() => setSmsProvider('jon-device')}
-                    className={`flex-1 px-4 py-3 rounded-md text-sm font-medium transition-colors ${
-                      smsProvider === 'jon-device'
-                        ? 'bg-green-600 text-white'
-                        : 'text-gray-400 hover:text-gray-300'
-                    }`}
+                    onClick={handleSendMessages}
+                    disabled={isSending || !messageText.trim() || phoneNumbers.length === 0}
+                    className={`px-6 py-3 rounded-md flex items-center space-x-2 text-white font-medium ${
+                      isSending
+                        ? 'bg-tech-secondary cursor-not-allowed'
+                        : 'bg-gradient hover:shadow-primary'
+                    } transition-shadow duration-300`}
                   >
-                    📱 Jon's Device (Recommended)
-                  </button>
-                  <button
-                    onClick={() => setSmsProvider('personal')}
-                    className={`flex-1 px-4 py-3 rounded-md text-sm font-medium transition-colors ${
-                      smsProvider === 'personal'
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-400 hover:text-gray-300'
-                    }`}
-                  >
-                    🔧 Personal Credentials
-                  </button>
-                </div>
-                <div className="mt-3 p-3 rounded-md bg-tech-secondary bg-opacity-50">
-                  <div className="text-sm">
-                    {smsProvider === 'jon-device' ? (
+                    {isSending ? (
                       <>
-                        <div className="text-green-400 font-medium">✅ Jon's Samsung Device</div>
-                        <div className="text-gray-400 mt-1">
-                          • Confirmed working for SMS delivery<br/>
-                          • Samsung Galaxy device with SMS Gateway app<br/>
-                          • Handles mass campaigns reliably<br/>
-                          • Automatic conversation tracking
-                        </div>
+                        <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Sending...</span>
                       </>
                     ) : (
                       <>
-                        <div className="text-yellow-400 font-medium">⚠️ Personal Credentials</div>
-                        <div className="text-gray-400 mt-1">
-                          • May have delivery issues on some devices<br/>
-                          • Motorola devices known to have problems<br/>
-                          • Use only if you've tested delivery<br/>
-                          • Requires manual credential setup
-                        </div>
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                        <span>Launch Campaign</span>
                       </>
+                    )}
+                  </button>
+                </div>
+                
+                {sendStatus && (
+                  <div className={`mt-4 p-3 rounded-md ${
+                    sendStatus.success 
+                      ? 'bg-green-900 bg-opacity-20 border border-green-500 text-green-400' 
+                      : 'bg-red-900 bg-opacity-20 border border-red-500 text-red-400'
+                  }`}>
+                    {sendStatus.message}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Variable Library Sidebar */}
+          <div className="space-y-6">
+            {/* Console Output */}
+            <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Console Output</h3>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-400">{consoleLogs.length} entries</span>
+                    <button
+                      onClick={() => setConsoleLogs([])}
+                      className="text-gray-400 hover:text-gray-300 transition-colors text-sm px-2 py-1 rounded hover:bg-tech-secondary"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="bg-[#1E1E1E] rounded-lg p-3 h-[300px] overflow-y-auto font-mono text-sm">
+                  {consoleLogs.map((log, index) => (
+                    <div key={index} className="mb-2 leading-relaxed">
+                      <span className="text-gray-500 text-xs">
+                        {log.timestamp.toLocaleTimeString()}
+                      </span>
+                      <span className={`ml-2 ${
+                        log.type === 'success' ? 'text-green-400' :
+                        log.type === 'error' ? 'text-red-400' :
+                        log.type === 'warning' ? 'text-yellow-400' :
+                        'text-gray-300'
+                      }`}>
+                        {log.type === 'success' ? '✓ ' :
+                         log.type === 'error' ? '✕ ' :
+                         log.type === 'warning' ? '⚠ ' :
+                         'ℹ '}
+                        {log.message}
+                      </span>
+                    </div>
+                  ))}
+                  <div ref={consoleEndRef} />
+                </div>
+              </div>
+            </div>
+
+            {/* Variable Controls */}
+            <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+              <div className="h-1 bg-gradient-accent"></div>
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Variable Library</h3>
+                  <button
+                    onClick={() => setShowVariables(!showVariables)}
+                    className="text-gray-400 hover:text-gray-300 transition-colors"
+                  >
+                    {showVariables ? '−' : '+'}
+                  </button>
+                </div>
+                
+                {showVariables && (
+                  <>
+                    {/* Search */}
+                    <input
+                      type="text"
+                      placeholder="Search variables..."
+                      value={variableSearch}
+                      onChange={(e) => setVariableSearch(e.target.value)}
+                      className="w-full p-2 mb-3 bg-tech-input border border-tech-border rounded text-tech-foreground focus:outline-none focus:ring-1 focus:ring-primary text-sm"
+                    />
+                    
+                    {/* Category Filter */}
+                    <select
+                      value={selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                      className="w-full p-2 mb-4 bg-tech-input border border-tech-border rounded text-tech-foreground focus:outline-none focus:ring-1 focus:ring-primary text-sm"
+                    >
+                      {VARIABLE_CATEGORIES.map(category => (
+                        <option key={category} value={category}>{category}</option>
+                      ))}
+                    </select>
+                    
+                    {/* Variable List */}
+                    <div className="max-h-96 overflow-y-auto">
+                      <div className="space-y-1">
+                        {filteredVariables.map((variable) => (
+                          <button
+                            key={variable.name}
+                            onClick={() => insertVariable(variable.name)}
+                            className="w-full text-left p-2 bg-tech-secondary hover:bg-tech-border rounded text-sm transition-colors duration-200"
+                          >
+                            <div className="font-mono text-primary">{`{${variable.name}}`}</div>
+                            <div className="text-xs text-gray-400">{variable.description}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 text-xs text-gray-400">
+                      {filteredVariables.length} variables available
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Quick Templates Library */}
+            <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-purple-500 to-pink-500"></div>
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Template Library</h3>
+                  <button
+                    onClick={() => setShowTemplates(!showTemplates)}
+                    className="text-gray-400 hover:text-gray-300 transition-colors"
+                  >
+                    {showTemplates ? '−' : '+'}
+                  </button>
+                </div>
+                
+                {showTemplates && (
+                  <>
+                    {/* Template Category Filter */}
+                    <select
+                      value={selectedTemplateCategory}
+                      onChange={(e) => setSelectedTemplateCategory(e.target.value)}
+                      className="w-full p-2 mb-4 bg-tech-input border border-tech-border rounded text-tech-foreground focus:outline-none focus:ring-1 focus:ring-primary text-sm"
+                    >
+                      {TEMPLATE_CATEGORIES.map(category => (
+                        <option key={category} value={category}>{category}</option>
+                      ))}
+                    </select>
+                    
+                    {/* Template List */}
+                    <div className="max-h-96 overflow-y-auto">
+                      <div className="space-y-2">
+                        {(QUICK_TEMPLATES as any)[selectedTemplateCategory]?.map((template: any, index: number) => (
+                          <button
+                            key={index}
+                            onClick={() => loadTemplate(template.template)}
+                            className="w-full text-left p-3 bg-tech-secondary hover:bg-tech-border rounded transition-colors duration-200"
+                          >
+                            <div className="font-medium text-sm text-tech-foreground">{template.name}</div>
+                            <div className="text-xs text-gray-400 mt-1">
+                              {template.template.substring(0, 80)}...
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 text-xs text-gray-400">
+                      {(QUICK_TEMPLATES as any)[selectedTemplateCategory]?.length || 0} templates in {selectedTemplateCategory}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Campaign Report */}
+            {showReport && campaignReport && (
+              <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
+                <div className="h-1 bg-gradient-to-r from-green-500 to-blue-500"></div>
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold">Campaign Report</h3>
+                    <button
+                      onClick={() => setShowReport(false)}
+                      className="text-gray-400 hover:text-gray-300 transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    {/* Campaign Summary */}
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="bg-tech-secondary p-3 rounded">
+                        <div className="text-gray-400">Total Recipients</div>
+                        <div className="text-xl font-bold text-tech-foreground">{campaignReport.totalRecipients}</div>
+                      </div>
+                      <div className="bg-tech-secondary p-3 rounded">
+                        <div className="text-gray-400">Success Rate</div>
+                        <div className="text-xl font-bold text-green-400">
+                          {((campaignReport.successful / campaignReport.totalRecipients) * 100).toFixed(1)}%
+                        </div>
+                      </div>
+                      <div className="bg-tech-secondary p-3 rounded">
+                        <div className="text-gray-400">Successful</div>
+                        <div className="text-xl font-bold text-green-400">{campaignReport.successful}</div>
+                      </div>
+                      <div className="bg-tech-secondary p-3 rounded">
+                        <div className="text-gray-400">Failed</div>
+                        <div className="text-xl font-bold text-red-400">{campaignReport.failed}</div>
+                      </div>
+                    </div>
+
+                    {/* Cost Information */}
+                    <div className="bg-tech-secondary p-3 rounded">
+                      <div className="text-gray-400 text-sm">Campaign Cost</div>
+                      <div className="flex justify-between">
+                        <span>Estimated: ${campaignReport.estimatedCost}</span>
+                        <span>Actual: ${campaignReport.actualCost || '0.00'}</span>
+                      </div>
+                    </div>
+
+                    {/* Campaign Details */}
+                    <div className="bg-tech-secondary p-3 rounded">
+                      <div className="text-gray-400 text-sm mb-2">Campaign Info</div>
+                      <div className="text-xs space-y-1">
+                        <div>ID: {campaignReport.campaignId}</div>
+                        <div>Started: {new Date(campaignReport.startTime).toLocaleString()}</div>
+                        {campaignReport.endTime && (
+                          <div>Completed: {new Date(campaignReport.endTime).toLocaleString()}</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Recent Message Details */}
+                    {campaignReport.details && campaignReport.details.length > 0 && (
+                      <div className="bg-tech-secondary p-3 rounded">
+                        <div className="text-gray-400 text-sm mb-2">Recent Messages</div>
+                        <div className="max-h-32 overflow-y-auto space-y-1">
+                          {campaignReport.details.slice(-5).map((detail: any, index: number) => (
+                            <div key={index} className="text-xs flex justify-between">
+                              <span className="truncate mr-2">{detail.phone}</span>
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                detail.status === 'sent' 
+                                  ? 'bg-green-900 text-green-400' 
+                                  : 'bg-red-900 text-red-400'
+                              }`}>
+                                {detail.status}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
               </div>
-            </div>
-          
-          {/* Message Composer */}
-          <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
-            <div className="h-1 bg-gradient"></div>
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Campaign Message</h3>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={optimizeWithAI}
-                    disabled={aiOptimizing || !messageText.trim()}
-                    className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm transition-colors disabled:opacity-50"
-                  >
-                    {aiOptimizing ? '🤖 Optimizing...' : '🤖 AI Optimize'}
-                  </button>
-                  <button
-                    onClick={() => setShowPreview(!showPreview)}
-                    disabled={!messageText.trim() || !previewContact}
-                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors disabled:opacity-50"
-                  >
-                    👀 Preview
-                  </button>
-                </div>
-              </div>
-              
-              <textarea
-                className="w-full min-h-[200px] p-4 bg-tech-input border border-tech-border rounded-md text-tech-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none font-mono text-sm"
-                placeholder="Create your personalized message template here...\n\nExample:\nHi {name}! I noticed {company} could benefit from digital marketing. Most {industry} businesses in {city} are missing out on 300% more leads. Quick 15-min call this {current_month}?\n\nBest,\nTRD Team"
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-              />
-              
-              <div className="flex justify-between items-center mt-2 text-xs text-gray-400">
-                <span>
-                  Variables: {(messageText.match(/{[^}]+}/g) || []).length} | 
-                  Characters: {messageText.length} / 1600
-                </span>
-                <span>
-                  Est. Cost: ${((messageText.length / 160) * phoneNumbers.length * 0.01).toFixed(2)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Preview Panel */}
-          {showPreview && previewContact && (
-            <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
-              <div className="h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
-              <div className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Message Preview</h3>
-                <div className="bg-tech-input border border-tech-border rounded-md p-4 mb-4">
-                  <div className="text-sm text-gray-400 mb-2">
-                    Preview for: {previewContact.name || previewContact.phone}
-                  </div>
-                  <div className="text-tech-foreground whitespace-pre-wrap">
-                    {generatePreview()}
-                  </div>
-                </div>
-                <div className="text-xs text-gray-400">
-                  This preview shows how your message will appear to the first contact in your list.
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Contact Upload */}
-          <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
-            <div className="h-1 bg-gradient-accent"></div>
-            <div className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Upload Contact List</h3>
-              
-              <div className="border-2 border-dashed border-tech-border rounded-lg p-6 text-center">
-                <input
-                  type="file"
-                  accept=".csv"
-                  className="hidden"
-                  id="csv-upload"
-                  onChange={handleFileUpload}
-                />
-                <label htmlFor="csv-upload" className="cursor-pointer">
-                  <div className="text-gray-300 mb-4">
-                    <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                    </svg>
-                  </div>
-                  <div className="text-lg text-gray-300 mb-2">Drop your CSV file here</div>
-                  <div className="text-sm text-gray-500">
-                    Supports Apollo exports, lead gen CSVs, and custom formats
-                  </div>
-                </label>
-              </div>
-              
-              {fileName && (
-                <div className="mt-4 flex items-center justify-between p-3 bg-green-900 bg-opacity-20 border border-green-500 rounded-md">
-                  <div className="flex items-center">
-                    <svg className="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-                    </svg>
-                    <span className="text-green-400 font-medium">
-                      {fileName} ({phoneNumbers.length} contacts)
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setFileName('');
-                      setPhoneNumbers([]);
-                      setContactData([]);
-                      setPreviewContact(null);
-                    }}
-                    className="text-red-400 hover:text-red-300 transition-colors"
-                  >
-                    Remove
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Send Campaign */}
-          <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-green-500 to-blue-500"></div>
-            <div className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold">Launch Campaign</h3>
-                  <p className="text-gray-400 text-sm">
-                    Ready to send to {phoneNumbers.length} contacts
-                  </p>
-                </div>
-                <button
-                  onClick={handleSendMessages}
-                  disabled={isSending || !messageText.trim() || phoneNumbers.length === 0}
-                  className={`px-6 py-3 rounded-md flex items-center space-x-2 text-white font-medium ${
-                    isSending
-                      ? 'bg-tech-secondary cursor-not-allowed'
-                      : 'bg-gradient hover:shadow-primary'
-                  } transition-shadow duration-300`}
-                >
-                  {isSending ? (
-                    <>
-                      <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span>Sending...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                      </svg>
-                      <span>Launch Campaign</span>
-                    </>
-                  )}
-                </button>
-                
-                {/* NEW SEND BUTTON - Simpler and more reliable */}
-                <button
-                  onClick={handleSendMessages}
-                  disabled={isSending}
-                  className={`ml-4 px-6 py-3 rounded-md flex items-center space-x-2 text-white font-medium ${
-                    isSending || !messageText || phoneNumbers.length === 0
-                      ? 'bg-gray-600 cursor-not-allowed opacity-50'
-                      : 'bg-green-600 hover:bg-green-700'
-                  } transition-colors duration-200`}
-                >
-                  {isSending ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Sending...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                      </svg>
-                      <span>Send ({phoneNumbers.length} contacts)</span>
-                    </>
-                  )}
-                </button>
-              </div>
-              
-              {sendStatus && (
-                <div className={`mt-4 p-3 rounded-md ${
-                  sendStatus.success 
-                    ? 'bg-green-900 bg-opacity-20 border border-green-500 text-green-400' 
-                    : 'bg-red-900 bg-opacity-20 border border-red-500 text-red-400'
-                }`}>
-                  {sendStatus.message}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Variable Library Sidebar */}
-        <div className="space-y-6">
-          {/* Variable Controls */}
-          <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
-            <div className="h-1 bg-gradient-accent"></div>
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Variable Library</h3>
-                <button
-                  onClick={() => setShowVariables(!showVariables)}
-                  className="text-gray-400 hover:text-gray-300 transition-colors"
-                >
-                  {showVariables ? '−' : '+'}
-                </button>
-              </div>
-              
-              {showVariables && (
-                <>
-                  {/* Search */}
-                  <input
-                    type="text"
-                    placeholder="Search variables..."
-                    value={variableSearch}
-                    onChange={(e) => setVariableSearch(e.target.value)}
-                    className="w-full p-2 mb-3 bg-tech-input border border-tech-border rounded text-tech-foreground focus:outline-none focus:ring-1 focus:ring-primary text-sm"
-                  />
-                  
-                  {/* Category Filter */}
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full p-2 mb-4 bg-tech-input border border-tech-border rounded text-tech-foreground focus:outline-none focus:ring-1 focus:ring-primary text-sm"
-                  >
-                    {VARIABLE_CATEGORIES.map(category => (
-                      <option key={category} value={category}>{category}</option>
-                    ))}
-                  </select>
-                  
-                  {/* Variable List */}
-                  <div className="max-h-96 overflow-y-auto">
-                    <div className="space-y-1">
-                      {filteredVariables.map((variable) => (
-                        <button
-                          key={variable.name}
-                          onClick={() => insertVariable(variable.name)}
-                          className="w-full text-left p-2 bg-tech-secondary hover:bg-tech-border rounded text-sm transition-colors duration-200"
-                        >
-                          <div className="font-mono text-primary">{`{${variable.name}}`}</div>
-                          <div className="text-xs text-gray-400">{variable.description}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="mt-4 text-xs text-gray-400">
-                    {filteredVariables.length} variables available
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Quick Templates Library */}
-          <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-purple-500 to-pink-500"></div>
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Template Library</h3>
-                <button
-                  onClick={() => setShowTemplates(!showTemplates)}
-                  className="text-gray-400 hover:text-gray-300 transition-colors"
-                >
-                  {showTemplates ? '−' : '+'}
-                </button>
-              </div>
-              
-              {showTemplates && (
-                <>
-                  {/* Template Category Filter */}
-                  <select
-                    value={selectedTemplateCategory}
-                    onChange={(e) => setSelectedTemplateCategory(e.target.value)}
-                    className="w-full p-2 mb-4 bg-tech-input border border-tech-border rounded text-tech-foreground focus:outline-none focus:ring-1 focus:ring-primary text-sm"
-                  >
-                    {TEMPLATE_CATEGORIES.map(category => (
-                      <option key={category} value={category}>{category}</option>
-                    ))}
-                  </select>
-                  
-                  {/* Template List */}
-                  <div className="max-h-96 overflow-y-auto">
-                    <div className="space-y-2">
-                      {(QUICK_TEMPLATES as any)[selectedTemplateCategory]?.map((template: any, index: number) => (
-                        <button
-                          key={index}
-                          onClick={() => loadTemplate(template.template)}
-                          className="w-full text-left p-3 bg-tech-secondary hover:bg-tech-border rounded transition-colors duration-200"
-                        >
-                          <div className="font-medium text-sm text-tech-foreground">{template.name}</div>
-                          <div className="text-xs text-gray-400 mt-1">
-                            {template.template.substring(0, 80)}...
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="mt-4 text-xs text-gray-400">
-                    {(QUICK_TEMPLATES as any)[selectedTemplateCategory]?.length || 0} templates in {selectedTemplateCategory}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Campaign Report */}
-          {showReport && campaignReport && (
-            <div className="bg-tech-card rounded-lg shadow-tech overflow-hidden">
-              <div className="h-1 bg-gradient-to-r from-green-500 to-blue-500"></div>
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">Campaign Report</h3>
-                  <button
-                    onClick={() => setShowReport(false)}
-                    className="text-gray-400 hover:text-gray-300 transition-colors"
-                  >
-                    ✕
-                  </button>
-                </div>
-                
-                <div className="space-y-4">
-                  {/* Campaign Summary */}
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="bg-tech-secondary p-3 rounded">
-                      <div className="text-gray-400">Total Recipients</div>
-                      <div className="text-xl font-bold text-tech-foreground">{campaignReport.totalRecipients}</div>
-                    </div>
-                    <div className="bg-tech-secondary p-3 rounded">
-                      <div className="text-gray-400">Success Rate</div>
-                      <div className="text-xl font-bold text-green-400">
-                        {((campaignReport.successful / campaignReport.totalRecipients) * 100).toFixed(1)}%
-                      </div>
-                    </div>
-                    <div className="bg-tech-secondary p-3 rounded">
-                      <div className="text-gray-400">Successful</div>
-                      <div className="text-xl font-bold text-green-400">{campaignReport.successful}</div>
-                    </div>
-                    <div className="bg-tech-secondary p-3 rounded">
-                      <div className="text-gray-400">Failed</div>
-                      <div className="text-xl font-bold text-red-400">{campaignReport.failed}</div>
-                    </div>
-                  </div>
-
-                  {/* Cost Information */}
-                  <div className="bg-tech-secondary p-3 rounded">
-                    <div className="text-gray-400 text-sm">Campaign Cost</div>
-                    <div className="flex justify-between">
-                      <span>Estimated: ${campaignReport.estimatedCost}</span>
-                      <span>Actual: ${campaignReport.actualCost || '0.00'}</span>
-                    </div>
-                  </div>
-
-                  {/* Campaign Details */}
-                  <div className="bg-tech-secondary p-3 rounded">
-                    <div className="text-gray-400 text-sm mb-2">Campaign Info</div>
-                    <div className="text-xs space-y-1">
-                      <div>ID: {campaignReport.campaignId}</div>
-                      <div>Started: {new Date(campaignReport.startTime).toLocaleString()}</div>
-                      {campaignReport.endTime && (
-                        <div>Completed: {new Date(campaignReport.endTime).toLocaleString()}</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Recent Message Details */}
-                  {campaignReport.details && campaignReport.details.length > 0 && (
-                    <div className="bg-tech-secondary p-3 rounded">
-                      <div className="text-gray-400 text-sm mb-2">Recent Messages</div>
-                      <div className="max-h-32 overflow-y-auto space-y-1">
-                        {campaignReport.details.slice(-5).map((detail: any, index: number) => (
-                          <div key={index} className="text-xs flex justify-between">
-                            <span className="truncate mr-2">{detail.phone}</span>
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              detail.status === 'sent' 
-                                ? 'bg-green-900 text-green-400' 
-                                : 'bg-red-900 text-red-400'
-                            }`}>
-                              {detail.status}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+            )}
           </div>
         </div>
       )}

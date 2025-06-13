@@ -111,6 +111,27 @@ export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
   const [validationResult, setValidationResult] = useState<ValidationResponse | null>(null);
   const [isFixing, setIsFixing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dncFile, setDncFile] = useState<File | null>(null);
+  const [dncNumbers, setDncNumbers] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('dncNumbers');
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return [];
+  });
+  const dncInputRef = useRef<HTMLInputElement>(null);
+  const [dncFileName, setDncFileName] = useState<string>('');
+
+  // Helper to normalize phone numbers for matching
+  const normalizePhone = (phone: string) => {
+    if (!phone) return '';
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('1')) return digits.slice(1); // US with country code
+    if (digits.length >= 10) return digits.slice(-10); // last 10 digits for comparison
+    return digits;
+  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -126,6 +147,47 @@ export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
     if (droppedFile && droppedFile.name.toLowerCase().endsWith('.csv')) {
       setFile(droppedFile);
       setValidationResult(null);
+    }
+  };
+
+  const handleDncSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = event.target.files?.[0];
+    if (!selected) return;
+
+    try {
+      const text = await selected.text();
+      const lines = text.split('\n').filter(Boolean);
+      let headerTokens: string[] = [];
+      const extracted: string[] = [];
+
+      if (lines.length > 0) {
+        headerTokens = lines[0].split(',').map(h => h.trim().toLowerCase());
+      }
+      const phoneColIndex = headerTokens.findIndex(h => h.includes('phone'));
+
+      for (let i = 0; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(c => c.replace(/"/g, '').trim());
+        let raw = '';
+        if (phoneColIndex !== -1 && cols[phoneColIndex]) {
+          raw = cols[phoneColIndex];
+        } else if (i !== 0 || phoneColIndex === -1) {
+          // Assume whole line is a phone number when no headers
+          raw = cols[0];
+        }
+        if (raw) {
+          const norm = normalizePhone(raw);
+          if (norm && !extracted.includes(norm)) extracted.push(norm);
+        }
+      }
+
+      setDncFile(selected);
+      setDncFileName(selected.name);
+      setDncNumbers(extracted);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('dncNumbers', JSON.stringify(extracted));
+      }
+    } catch (err) {
+      console.error('Failed to parse DNC file', err);
     }
   };
 
@@ -147,6 +209,32 @@ export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
 
       const result: ValidationResponse = await response.json();
       
+      // If we have a cleanedCSV and DNC numbers, filter out any matches
+      if (result.cleanedCSV && dncNumbers.length > 0) {
+        const lines = result.cleanedCSV.split('\n');
+        if (lines.length > 1) {
+          const headers = lines[0].split(',');
+          const phoneIdx = headers.findIndex(h => h.toLowerCase().includes('phone'));
+          if (phoneIdx !== -1) {
+            const filtered = [lines[0],
+              ...lines.slice(1).filter(line => {
+                const cols = line.split(',');
+                const phoneRaw = cols[phoneIdx]?.replace(/"/g, '').trim();
+                const norm = normalizePhone(phoneRaw);
+                return norm && !dncNumbers.includes(norm);
+              })
+            ];
+            const removedByDnc = lines.length - filtered.length;
+            result.cleanedCSV = filtered.join('\n');
+            // Update summary if available
+            if (result.summary) {
+              result.summary.afterCleaning = filtered.length - 1; // minus header
+              result.summary.removed += removedByDnc;
+            }
+          }
+        }
+      }
+
       if (response.ok) {
         setValidationResult(result);
         onValidationComplete?.(result);
@@ -267,6 +355,44 @@ export function CSVValidator({ onValidationComplete }: CSVValidatorProps) {
           />
         </div>
       )}
+
+      {/* NEW: Do Not Contact Upload */}
+      <div className="mt-6">
+        <h4 className="text-sm font-medium text-gray-300 mb-2">Do-Not-Contact List (optional)</h4>
+        {!dncFile && (
+          <div
+            className="border-2 border-dashed border-tech-border rounded-lg p-6 text-center hover:border-yellow-500 transition-colors cursor-pointer"
+            onClick={() => dncInputRef.current?.click()}
+          >
+            <p className="text-gray-400">Upload CSV of numbers to exclude from future sends</p>
+            <input
+              ref={dncInputRef}
+              type="file"
+              accept=".csv"
+              onChange={handleDncSelect}
+              className="hidden"
+            />
+          </div>
+        )}
+        {dncFile && (
+          <div className="bg-tech-input border border-tech-border rounded-lg p-4 flex items-center justify-between mt-2">
+            <div className="text-tech-foreground text-sm flex-1 truncate">
+              {dncFileName} ({dncNumbers.length} numbers)
+            </div>
+            <button
+              onClick={() => {
+                setDncFile(null);
+                setDncFileName('');
+                setDncNumbers([]);
+                if (typeof window !== 'undefined') localStorage.removeItem('dncNumbers');
+              }}
+              className="text-red-400 text-xs ml-4 hover:text-red-300"
+            >
+              Remove
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* File Selected */}
       {file && !validationResult && (

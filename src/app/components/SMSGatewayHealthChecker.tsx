@@ -25,12 +25,20 @@ export function SMSGatewayHealthChecker({ className = "" }: SMSGatewayHealthChec
   });
   const [checking, setChecking] = useState(false);
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
+  const [username, setUsername] = useState<string>('');
+
+  const getPersonalizedDeviceName = (username: string) => {
+    if (!username) return 'Personal Provider';
+    // Capitalize first letter and add "'s Device"
+    return `${username.charAt(0).toUpperCase() + username.slice(1)}'s Device`;
+  };
 
   const checkSMSGatewayHealth = async () => {
     setChecking(true);
     try {
       // Get current user information from localStorage
       const username = localStorage.getItem('username');
+      setUsername(username || '');
       const queryParam = username ? `?username=${username}` : '';
       
       const response = await fetch(`/api/sms-gateway/health-check${queryParam}`, {
@@ -163,7 +171,7 @@ export function SMSGatewayHealthChecker({ className = "" }: SMSGatewayHealthChec
           <div className="flex justify-between items-center">
             <span className="text-gray-400">User:</span>
             <span className="text-tech-foreground">
-              {healthStatus.userDisplayName || 'Unknown'}
+              {getPersonalizedDeviceName(username)}
             </span>
           </div>
           

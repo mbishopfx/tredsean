@@ -1791,6 +1791,29 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
             timestamp: new Date()
           }, ...prev.slice(0, 9)]);
 
+          // Save to permanent storage
+          try {
+            const username = localStorage.getItem('username') || 'anonymous';
+            await fetch('/api/ai/save-output', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                toolName: activeAITool,
+                inputData: aiInput,
+                outputData: auditReport,
+                userId: username,
+                metadata: {
+                  businessName: data.businessName,
+                  overallScore: data.overallScore,
+                  timestamp: new Date().toISOString()
+                }
+              })
+            });
+          } catch (storageError) {
+            console.error('Failed to save AI output:', storageError);
+            // Continue even if storage fails
+          }
+
         } else {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to generate SEO audit');
@@ -1882,6 +1905,30 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
           timestamp: new Date()
         }, ...prev.slice(0, 9)]);
 
+        // Save to permanent storage
+        try {
+          const username = localStorage.getItem('username') || 'anonymous';
+          await fetch('/api/ai/save-output', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              toolName: activeAITool,
+              inputData: `File: ${uploadedFile.name}`,
+              outputData: responseText,
+              userId: username,
+              metadata: {
+                filename: uploadedFile.name,
+                totalRecords: data.stats.total_input,
+                outputRecords: data.stats.final_output || data.stats.valid_contacts,
+                timestamp: new Date().toISOString()
+              }
+            })
+          });
+        } catch (storageError) {
+          console.error('Failed to save AI output:', storageError);
+          // Continue even if storage fails
+        }
+
         // Log the CSV processing usage
         logActivity('csv_processed', {
           tool: activeAITool,
@@ -1941,6 +1988,29 @@ ${phase.tasks.map(task => `• ${task}`).join('\n')}
         response: data.response,
         timestamp: new Date()
       }, ...prev.slice(0, 9)]); // Keep last 10 entries
+
+      // Save to permanent storage
+      try {
+        const username = localStorage.getItem('username') || 'anonymous';
+        await fetch('/api/ai/save-output', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            toolName: activeAITool,
+            inputData: aiInput,
+            outputData: data.response,
+            userId: username,
+            metadata: {
+              inputLength: aiInput.length,
+              responseLength: data.response.length,
+              timestamp: new Date().toISOString()
+            }
+          })
+        });
+      } catch (storageError) {
+        console.error('Failed to save AI output:', storageError);
+        // Continue even if storage fails
+      }
 
       // Log the AI tool usage
       logActivity('ai_tool_used', {
