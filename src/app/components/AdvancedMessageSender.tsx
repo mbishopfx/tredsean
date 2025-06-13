@@ -744,7 +744,81 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
     try {
       // Always use personal SMS Gateway credentials
       const storedCredentials = localStorage.getItem('personalSMSCredentials');
-      const personalSMSCredentials = storedCredentials ? JSON.parse(storedCredentials) : null;
+      let personalSMSCredentials = storedCredentials ? JSON.parse(storedCredentials) : null;
+      
+      // AUTO-INITIALIZE CREDENTIALS for production readiness based on username
+      const username = localStorage.getItem('username');
+      
+      // Define team member credentials
+      const teamCredentials: { [key: string]: any } = {
+        'Seantrd': {
+          provider: 'smsgateway',
+          email: 'sean@trurankdigital.com',
+          password: 'Croatia5376!',
+          cloudUsername: 'YH1NKV',
+          cloudPassword: 'obiwpwuzrx5lip',
+          endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
+        },
+        'Matttrd': {
+          provider: 'smsgateway',
+          email: 'sean@trurankdigital.com',
+          password: 'Croatia5376!',
+          cloudUsername: 'YH1NKV',
+          cloudPassword: 'obiwpwuzrx5lip',
+          endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
+        },
+        'Jontrd': {
+          provider: 'smsgateway',
+          email: 'jon@trurankdigital.com',
+          password: 'WorkingDevice123!',
+          cloudUsername: 'AD2XA0',
+          cloudPassword: '2nitkjiqnmrrtc',
+          endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
+        },
+        'Juantrd': {
+          provider: 'smsgateway',
+          email: 'juan@trurankdigital.com',
+          password: 'JuanDevice456!',
+          cloudUsername: 'GBNSPW',
+          cloudPassword: '3nneo5hkbyhpti',
+          endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
+        },
+        'Josetrd': {
+          provider: 'smsgateway',
+          email: 'jose@trurankdigital.com',
+          password: 'JoseDevice789!',
+          cloudUsername: '_NNSZW',
+          cloudPassword: '9qajexoy9ihhnl',
+          endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
+        }
+      };
+      
+      if (!personalSMSCredentials && username && teamCredentials[username]) {
+        console.log(`🚀 Auto-initializing ${username}'s SMS Gateway credentials for production...`);
+        personalSMSCredentials = teamCredentials[username];
+        
+        // Save the credentials to localStorage for future use
+        localStorage.setItem('personalSMSCredentials', JSON.stringify(personalSMSCredentials));
+        console.log(`✅ Auto-initialized ${username}'s credentials saved to localStorage`);
+      }
+      
+      // FORCE FIX: If credentials are wrong for any user, auto-correct them
+      if (username && teamCredentials[username] && personalSMSCredentials) {
+        // Check if these are outdated credentials for any user
+        const currentCredentials = teamCredentials[username];
+        if (personalSMSCredentials.cloudUsername !== currentCredentials.cloudUsername || 
+            personalSMSCredentials.cloudPassword !== currentCredentials.cloudPassword) {
+          
+          console.log(`🔧 FORCE-FIXING ${username}'s credentials to current ones...`);
+          
+          // Set the correct credentials for this user
+          personalSMSCredentials = currentCredentials;
+          
+          // Save the corrected credentials
+          localStorage.setItem('personalSMSCredentials', JSON.stringify(personalSMSCredentials));
+          console.log(`✅ Updated ${username}'s credentials saved to localStorage`);
+        }
+      }
       
       if (!personalSMSCredentials) {
         setSendStatus({
@@ -957,7 +1031,81 @@ export function AdvancedMessageSender({ isActive, logActivity }: AdvancedMessage
         try {
           // Always use personal SMS Gateway credentials
           const storedCredentials = localStorage.getItem('personalSMSCredentials');
-          const personalSMSCredentials = storedCredentials ? JSON.parse(storedCredentials) : null;
+          let personalSMSCredentials = storedCredentials ? JSON.parse(storedCredentials) : null;
+          
+          // AUTO-INITIALIZE CREDENTIALS for production readiness based on username
+          const username = localStorage.getItem('username');
+          
+          // Define team member credentials
+          const teamCredentials: { [key: string]: any } = {
+            'Seantrd': {
+              provider: 'smsgateway',
+              email: 'sean@trurankdigital.com',
+              password: 'Croatia5376!',
+              cloudUsername: 'YH1NKV',
+              cloudPassword: 'obiwpwuzrx5lip',
+              endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
+            },
+            'Matttrd': {
+              provider: 'smsgateway',
+              email: 'sean@trurankdigital.com',
+              password: 'Croatia5376!',
+              cloudUsername: 'YH1NKV',
+              cloudPassword: 'obiwpwuzrx5lip',
+              endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
+            },
+            'Jontrd': {
+              provider: 'smsgateway',
+              email: 'jon@trurankdigital.com',
+              password: 'WorkingDevice123!',
+              cloudUsername: 'AD2XA0',
+              cloudPassword: '2nitkjiqnmrrtc',
+              endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
+            },
+            'Juantrd': {
+              provider: 'smsgateway',
+              email: 'juan@trurankdigital.com',
+              password: 'JuanDevice456!',
+              cloudUsername: 'GBNSPW',
+              cloudPassword: '3nneo5hkbyhpti',
+              endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
+            },
+            'Josetrd': {
+              provider: 'smsgateway',
+              email: 'jose@trurankdigital.com',
+              password: 'JoseDevice789!',
+              cloudUsername: '_NNSZW',
+              cloudPassword: '9qajexoy9ihhnl',
+              endpoint: 'https://api.sms-gate.app/3rdparty/v1/message'
+            }
+          };
+          
+          if (!personalSMSCredentials && username && teamCredentials[username]) {
+            console.log(`🚀 Auto-initializing ${username}'s SMS Gateway credentials for production...`);
+            personalSMSCredentials = teamCredentials[username];
+            
+            // Save the credentials to localStorage for future use
+            localStorage.setItem('personalSMSCredentials', JSON.stringify(personalSMSCredentials));
+            console.log(`✅ Auto-initialized ${username}'s credentials saved to localStorage`);
+          }
+          
+          // FORCE FIX: If credentials are wrong for any user, auto-correct them
+          if (username && teamCredentials[username] && personalSMSCredentials) {
+            // Check if these are outdated credentials for any user
+            const currentCredentials = teamCredentials[username];
+            if (personalSMSCredentials.cloudUsername !== currentCredentials.cloudUsername || 
+                personalSMSCredentials.cloudPassword !== currentCredentials.cloudPassword) {
+              
+              console.log(`🔧 FORCE-FIXING ${username}'s credentials to current ones...`);
+              
+              // Set the correct credentials for this user
+              personalSMSCredentials = currentCredentials;
+              
+              // Save the corrected credentials
+              localStorage.setItem('personalSMSCredentials', JSON.stringify(personalSMSCredentials));
+              console.log(`✅ Updated ${username}'s credentials saved to localStorage`);
+            }
+          }
           
           if (!personalSMSCredentials) {
             throw new Error('Personal SMS credentials not found. Please log in again.');

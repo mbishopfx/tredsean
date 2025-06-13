@@ -34,17 +34,59 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const username = localStorage.getItem('username');
-      if (username === 'Matttrd' || username === 'Seantrd') {
-        setIsSeanAccount(true);
-        setCredentials({
+      
+      // Define team member credentials
+      const teamCredentials: { [key: string]: any } = {
+        'Seantrd': {
           apiKey: '',
           deviceId: '',
           provider: 'smsgateway',
-          email: '',
-          password: '',
+          email: 'sean@trurankdigital.com',
+          password: 'Croatia5376!',
           cloudUsername: 'YH1NKV',
           cloudPassword: 'obiwpwuzrx5lip'
-        });
+        },
+        'Matttrd': {
+          apiKey: '',
+          deviceId: '',
+          provider: 'smsgateway',
+          email: 'sean@trurankdigital.com',
+          password: 'Croatia5376!',
+          cloudUsername: 'YH1NKV',
+          cloudPassword: 'obiwpwuzrx5lip'
+        },
+        'Jontrd': {
+          apiKey: '',
+          deviceId: '',
+          provider: 'smsgateway',
+          email: 'jon@trurankdigital.com',
+          password: 'WorkingDevice123!',
+          cloudUsername: 'AD2XA0',
+          cloudPassword: '2nitkjiqnmrrtc'
+        },
+        'Juantrd': {
+          apiKey: '',
+          deviceId: '',
+          provider: 'smsgateway',
+          email: 'juan@trurankdigital.com',
+          password: 'JuanDevice456!',
+          cloudUsername: 'GBNSPW',
+          cloudPassword: '3nneo5hkbyhpti'
+        },
+        'Josetrd': {
+          apiKey: '',
+          deviceId: '',
+          provider: 'smsgateway',
+          email: 'jose@trurankdigital.com',
+          password: 'JoseDevice789!',
+          cloudUsername: '_NNSZW',
+          cloudPassword: '9qajexoy9ihhnl'
+        }
+      };
+      
+      if (username && teamCredentials[username]) {
+        setIsSeanAccount(true); // Set to true for all team members
+        setCredentials(teamCredentials[username]);
       }
     }
   }, [isOpen]);
@@ -103,9 +145,9 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
         <h2 className="text-xl font-semibold text-tech-foreground mb-2">Personal SMS Gateway Setup</h2>
         {isSeanAccount ? (
           <div className="mb-6 p-4 bg-green-900 bg-opacity-20 border border-green-500 rounded-md">
-            <h3 className="text-green-400 font-medium mb-2">✅ Sean's SMS Gateway - Pre-Configured</h3>
+            <h3 className="text-green-400 font-medium mb-2">✅ Team SMS Gateway - Pre-Configured</h3>
             <p className="text-green-300 text-sm">
-              Your SMS Gateway is already set up and working! These credentials are hardcoded and connected to your cloud server.
+              Your SMS Gateway is already set up and working! These credentials are configured for your team account.
             </p>
           </div>
         ) : (
@@ -117,7 +159,7 @@ export function PersonalSMSCredentials({ isOpen, onClose, onSave }: PersonalSMSC
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label htmlFor="provider" className="block text-sm font-medium text-gray-300 mb-2">
-              SMS Gateway Provider {isSeanAccount && <span className="text-green-400">(Default for Sean)</span>}
+              SMS Gateway Provider {isSeanAccount && <span className="text-green-400">(Pre-configured for Team)</span>}
             </label>
             <select
               id="provider"
